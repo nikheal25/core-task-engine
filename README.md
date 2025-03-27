@@ -163,6 +163,18 @@ SWAGGER_ENABLED=true
 SWAGGER_ENABLED=false
 ```
 
+## Documentation
+
+Comprehensive documentation is available in the `docs` directory:
+
+- [Developer Guide](./docs/developer-guide/README.md) - Technical documentation for developers
+- [API Documentation](./docs/api-documentation/README.md) - API and business logic documentation
+
+To access the interactive API documentation (Swagger UI), run the application and navigate to:
+```
+http://localhost:3000/api/docs
+```
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
