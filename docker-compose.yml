@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  api:
+    container_name: core-task-engine
+    build:
+      context: .
+      target: ${NODE_ENV:-development}
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    command: pnpm run start:${NODE_ENV:-dev}
+    env_file:
+      - .env.${NODE_ENV:-development}
+    networks:
+      - task-engine-network
+    restart: unless-stopped
+
+networks:
+  task-engine-network: 

@@ -70,6 +70,83 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+## Docker Setup
+
+This project includes Docker support for easy development and deployment.
+
+### Running with Docker
+
+```bash
+# Build and start the application in development mode
+$ docker-compose up
+
+# Run in detached mode
+$ docker-compose up -d
+
+# Stop the containers
+$ docker-compose down
+```
+
+### Environment Support
+
+The Docker setup supports multiple environments: development, staging, and production.
+
+#### Using the deployment script
+
+```bash
+# Deploy to development environment (default)
+$ ./docker-deploy.sh
+
+# Deploy to staging environment
+$ ./docker-deploy.sh staging
+
+# Deploy to production environment
+$ ./docker-deploy.sh production
+```
+
+#### Manual environment deployment
+
+```bash
+# For development
+$ export NODE_ENV=development
+$ docker-compose up --build
+
+# For staging
+$ export NODE_ENV=staging
+$ docker-compose -f docker-compose.yml -f docker-compose.staging.yml up --build -d
+
+# For production
+$ export NODE_ENV=production
+$ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+### Building for Production
+
+```bash
+# Build the production image
+$ docker build -t core-task-engine --target production .
+
+# Run the production container
+$ docker run -p 3000:3000 --env-file .env.production core-task-engine
+```
+
+## Environment Configuration
+
+This project uses environment-specific configuration files:
+
+- `.env.development` - Development environment (Docker)
+- `.env.staging` - Staging environment (Docker)
+- `.env.production` - Production environment (Docker)
+- `.env.local` - Local development (without Docker)
+
+You can specify which environment to use by setting the `NODE_ENV` environment variable.
+
+```bash
+# For local development without Docker
+$ export NODE_ENV=local
+$ pnpm run start:dev
+```
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
