@@ -147,6 +147,22 @@ $ export NODE_ENV=local
 $ pnpm run start:dev
 ```
 
+## API Documentation
+
+This project uses Swagger for API documentation. The Swagger UI is available at `/api/docs` when the application is running.
+
+### Swagger Configuration
+
+Swagger is enabled by default in development, staging, and local environments, but disabled in production for security reasons. You can control this by setting the `SWAGGER_ENABLED` environment variable.
+
+```bash
+# Enable Swagger in any environment
+SWAGGER_ENABLED=true
+
+# Disable Swagger in any environment
+SWAGGER_ENABLED=false
+```
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
