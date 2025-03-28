@@ -1,0 +1,41 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Echo commit format guide
+echo "
+✨ COMMIT FORMAT GUIDE ✨
+Format: type(scope): description
+Examples:
+  feat(auth): add login page
+  fix(api): resolve user data fetch issue
+  docs: update README
+Use 'pnpm commit:bypass' to skip validation in urgent cases
+
+Valid types:
+  feat     - New feature
+  fix      - Bug fix
+  docs     - Documentation
+  style    - Formatting
+  refactor - Code changes
+  perf     - Performance
+  test     - Tests
+  build    - Build system
+  ci       - CI changes
+  chore    - Maintenance
+  revert   - Revert changes
+"
+
+# Skip commitlint if HUSKY=0 is set
+if [ "$HUSKY" = "0" ]; then
+  echo "🚨 Husky checks bypassed! Please use descriptive commit messages anyway."
+  exit 0
+fi
+
+echo "🔍 Checking commit message format..."
+# Run commitlint to validate the commit message
+npx --no -- commitlint --edit ${1}
+
+# Print success message if validation passes
+if [ $? -eq 0 ]; then
+  echo "✅ Commit message format is valid!"
+fi 

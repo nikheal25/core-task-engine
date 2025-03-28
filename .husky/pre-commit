@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Running pre-commit checks..."
+
+# Skip checks if HUSKY=0 is set
+if [ "$HUSKY" = "0" ]; then
+  echo "🚨 Pre-commit checks bypassed!"
+  exit 0
+fi
+
+echo "⏳ Running tests (non-blocking)..."
+pnpm test || true
+
+# Always exit with success
+exit 0

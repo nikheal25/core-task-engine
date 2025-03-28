@@ -198,6 +198,51 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
+## Commit Message Guidelines
+
+This project follows the [Conventional Commits](https://www.conventionalcommits.org/) standard for commit messages to ensure a consistent and readable git history.
+
+### Format
+
+```
+<type>(<optional scope>): <description>
+
+<optional body>
+
+<optional footer>
+```
+
+### Types
+
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Changes that do not affect the meaning of the code (formatting, etc)
+- `refactor`: Code changes that neither fix a bug nor add a feature
+- `perf`: Performance improvements
+- `test`: Adding or correcting tests
+- `build`: Changes to build system or dependencies
+- `ci`: Changes to CI configuration
+- `chore`: Other changes that don't modify src or test files
+
+### Examples
+
+```
+feat(auth): add JWT authentication
+fix(logging): correct timestamp format
+docs: update README with API documentation
+```
+
+### Bypassing Commit Message Validation
+
+In urgent situations, you can bypass commit validation by using:
+
+```bash
+pnpm commit:bypass
+```
+
+> Please use this sparingly and still try to follow the format.
+
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
