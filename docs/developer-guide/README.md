@@ -6,6 +6,7 @@ This section contains all the technical documentation for developers working on 
 
 - [Getting Started](./getting-started.md) - How to set up and start working on the project
 - [Coding Standards](./coding-standards.md) - Coding conventions and standards for this project
+- [Commit Standards](./commit-standards.md) - Commit message conventions and validation
 - [Environment Setup](./environment-setup.md) - How to set up different environments
 - [Docker Guide](./docker-guide.md) - How to use Docker with this project
 - [Troubleshooting](./troubleshooting.md) - Common issues and their solutions

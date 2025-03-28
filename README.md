@@ -198,50 +198,18 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
-## Commit Message Guidelines
+## Commit Standards
 
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/) standard for commit messages to ensure a consistent and readable git history.
-
-### Format
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) format with automated validation:
 
 ```
-<type>(<optional scope>): <description>
-
-<optional body>
-
-<optional footer>
+type(scope): subject  # e.g., feat(auth): add login page
 ```
 
-### Types
+- **Regular commit:** `pnpm commit`
+- **Emergency bypass:** `pnpm commit:bypass`
 
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation changes
-- `style`: Changes that do not affect the meaning of the code (formatting, etc)
-- `refactor`: Code changes that neither fix a bug nor add a feature
-- `perf`: Performance improvements
-- `test`: Adding or correcting tests
-- `build`: Changes to build system or dependencies
-- `ci`: Changes to CI configuration
-- `chore`: Other changes that don't modify src or test files
-
-### Examples
-
-```
-feat(auth): add JWT authentication
-fix(logging): correct timestamp format
-docs: update README with API documentation
-```
-
-### Bypassing Commit Message Validation
-
-In urgent situations, you can bypass commit validation by using:
-
-```bash
-pnpm commit:bypass
-```
-
-> Please use this sparingly and still try to follow the format.
+For detailed guidelines, see [commit standards documentation](./docs/developer-guide/commit-standards.md).
 
 ## License
 

@@ -121,10 +121,17 @@ This project uses the following tools for code quality:
 
 ## Commit Guidelines
 
-- Use conventional commits format:
-  - `feat: add new feature`
-  - `fix: fix bug in X`
-  - `docs: update documentation`
-  - `refactor: improve code structure`
-  - `test: add test for feature X`
-  - `chore: update dependencies` 
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) standard with enforced validation via Husky and commitlint. See our detailed [commit standards documentation](./commit-standards.md) for the complete guide.
+
+Basic format:
+```
+type(scope): subject
+```
+
+Common types:
+- `feat`: New features
+- `fix`: Bug fixes
+- `docs`: Documentation changes
+- `refactor`: Code changes that neither fix bugs nor add features
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks 
