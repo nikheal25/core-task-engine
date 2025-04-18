@@ -15,13 +15,19 @@ export interface ResourceAllocation {
   allocation: number;
 }
 
+export interface AssetComponent {
+  name: string;
+  resourceModel: ResourceAllocation[];
+}
+
 /**
  * Base interface for all asset cost requests
  */
 export interface AssetCostRequest {
   assetType: string;
   commonFields: CommonFields;
-  resourceModel: ResourceAllocation[];
+  assetComponents: AssetComponent[];
+  // resourceModel: ResourceAllocation[];
   specificFields: Record<string, any>;
 }
 
@@ -60,4 +66,4 @@ export interface AssetCostResponse {
 export interface CostCalculator {
   calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse>;
   getAssetType(): string;
-} 
+}

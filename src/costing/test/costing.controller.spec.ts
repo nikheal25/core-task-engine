@@ -13,19 +13,16 @@ describe('CostingController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CostingController],
-      providers: [
-        CostingService,
-        AtrCalculator,
-        QPlusPlusCalculator,
-      ],
+      providers: [CostingService, AtrCalculator, QPlusPlusCalculator],
     }).compile();
 
     controller = module.get<CostingController>(CostingController);
     service = module.get<CostingService>(CostingService);
-    
+
     // Register calculators
     const atrCalculator = module.get<AtrCalculator>(AtrCalculator);
-    const qPlusPlusCalculator = module.get<QPlusPlusCalculator>(QPlusPlusCalculator);
+    const qPlusPlusCalculator =
+      module.get<QPlusPlusCalculator>(QPlusPlusCalculator);
     service.registerCalculator(atrCalculator);
     service.registerCalculator(qPlusPlusCalculator);
   });
@@ -62,13 +59,13 @@ describe('CostingController', () => {
     };
 
     const result = await controller.calculateAssetCost(request);
-    
+
     expect(result).toBeDefined();
     expect(result.assetType).toBe('ATR');
     expect(result.buildCost).toBeDefined();
     expect(result.buildCost.total).toBeGreaterThan(0);
     expect(result.buildCost.breakdown).toBeDefined();
-    
+
     expect(result.runCost).toBeDefined();
     expect(result.runCost.total).toBeGreaterThan(0);
     expect(result.runCost.period).toBe('monthly');
@@ -98,6 +95,8 @@ describe('CostingController', () => {
       },
     };
 
-    await expect(controller.calculateAssetCost(request)).rejects.toThrow('Test error');
+    await expect(controller.calculateAssetCost(request)).rejects.toThrow(
+      'Test error',
+    );
   });
-}); 
+});

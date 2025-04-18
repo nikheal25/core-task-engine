@@ -6,4 +6,4 @@ export class HelloResponseDto {
     example: 'Hello World!',
   })
   message: string;
-} 
+}

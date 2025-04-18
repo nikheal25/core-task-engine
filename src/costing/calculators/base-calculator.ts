@@ -1,11 +1,18 @@
+import { Injectable } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import {
   AssetCostRequest,
   AssetCostResponse,
   CostBreakdown,
   CostCalculator,
   ResourceAllocation,
+  AssetComponent,
 } from '../interfaces/costing.interface';
 
+/**
+ * Base calculator that all asset-specific calculators extend
+ */
+@Injectable()
 export abstract class BaseCalculator implements CostCalculator {
   protected abstract assetType: string;
   protected abstract calculateBuildCost(request: AssetCostRequest): Promise<{
@@ -17,32 +24,43 @@ export abstract class BaseCalculator implements CostCalculator {
     breakdown: CostBreakdown;
     period: 'monthly' | 'yearly';
   }>;
-  
+
   /**
    * Location rates specific to each asset type, to be overridden by subclasses
    */
   protected abstract getLocationRates(): Record<string, number>;
 
-  public async calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse> {
-    if (request.assetType !== this.getAssetType()) {
-      throw new Error(`Invalid asset type. Expected ${this.getAssetType()}, got ${request.assetType}`);
+  /**
+   * Calculate both build and run costs
+   * This is the main entry point for all calculators
+   */
+  async calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse> {
+    // Validate asset type
+    if (request.assetType !== this.assetType) {
+      throw new BadRequestException(
+        `Invalid asset type. Expected ${this.assetType}, got ${request.assetType}`,
+      );
     }
-    
-    // Validate resource model allocations total 100%
-    this.validateResourceModelAllocations(request.resourceModel);
 
+    // Validate resource model allocations
+    this.validateComponents(request.assetComponents);
+
+    // Calculate costs
     const buildCost = await this.calculateBuildCost(request);
     const runCost = await this.calculateRunCost(request);
 
     return {
-      assetType: this.getAssetType(),
+      assetType: request.assetType,
       buildCost: {
-        ...buildCost,
-        currency: 'USD', // Default currency, could be made configurable
+        total: buildCost.total,
+        breakdown: buildCost.breakdown,
+        currency: 'USD', // Default currency
       },
       runCost: {
-        ...runCost,
-        currency: 'USD', // Default currency, could be made configurable
+        total: runCost.total,
+        breakdown: runCost.breakdown,
+        period: runCost.period,
+        currency: 'USD', // Default currency
       },
       estimationDate: new Date(),
     };
@@ -53,93 +71,103 @@ export abstract class BaseCalculator implements CostCalculator {
   }
 
   /**
-   * Calculates the effort-based build cost based on resource allocations
-   * and location-specific rates
+   * Helper method to calculate effort-based build cost
+   * based on resource allocations
    */
-  protected calculateEffortBasedBuildCost(request: AssetCostRequest): {
+  protected calculateEffortBasedBuildCost(component: AssetComponent): {
     amount: number;
     description: string;
   } {
     const locationRates = this.getLocationRates();
-    let totalCost = 0;
-    const locationDetails: string[] = [];
+    let totalBuildCost = 0;
+    const allocations: string[] = [];
 
-    for (const resource of request.resourceModel) {
-      const rate = locationRates[resource.location] || this.getDefaultRate();
-      const cost = (rate * resource.allocation) / 100;
-      totalCost += cost;
-      locationDetails.push(`${resource.location} (${resource.allocation}%)`);
+    // Calculate cost for each location based on allocation percentage
+    for (const resource of component.resourceModel) {
+      const locationRate =
+        locationRates[resource.location] || locationRates['US'];
+      const cost = (locationRate * resource.allocation) / 100;
+      totalBuildCost += cost;
+      allocations.push(`${resource.location}: ${resource.allocation}%`);
     }
 
     return {
-      amount: totalCost,
-      description: `Effort-based build cost for locations: ${locationDetails.join(', ')}`,
+      amount: totalBuildCost,
+      description: `Build effort for resource allocations (${allocations.join(', ')})`,
     };
   }
 
   /**
-   * Default rate to use if a specific location rate is not found
+   * Validate that resource model allocations add up to 100%
    */
-  protected getDefaultRate(): number {
-    return 10000; // Default value, can be overridden
+  protected validateComponents(components: AssetComponent[]): void {
+    if (!components || !components.length) {
+      throw new BadRequestException(
+        'At least one asset component with resource model is required',
+      );
+    }
+
+    // Validate each component's resource model
+    for (const component of components) {
+      if (!component.resourceModel || !component.resourceModel.length) {
+        throw new BadRequestException(
+          `Component "${component.name}" must have a resource model`,
+        );
+      }
+
+      // Check if allocations add up to 100%
+      const totalAllocation = component.resourceModel.reduce(
+        (sum, resource) => sum + resource.allocation,
+        0,
+      );
+
+      if (totalAllocation !== 100) {
+        throw new BadRequestException(
+          `Resource allocations for component "${component.name}" must add up to 100%, got ${totalAllocation}%`,
+        );
+      }
+    }
   }
 
   /**
-   * Validates that resource model allocations sum to 100%
+   * Get multiplier for deployment type
    */
-  private validateResourceModelAllocations(resourceModel: ResourceAllocation[]): void {
-    if (!resourceModel || resourceModel.length === 0) {
-      throw new Error('Resource model must contain at least one allocation');
-    }
+  protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
+    const deploymentType = request.commonFields?.deploymentType || 'onPremise';
 
-    const totalAllocation = resourceModel.reduce((sum, resource) => sum + resource.allocation, 0);
-    
-    // Allow a small tolerance for floating point errors
-    if (totalAllocation < 99.9 || totalAllocation > 100.1) {
-      throw new Error(`Resource allocations must add up to 100%. Current total: ${totalAllocation}%`);
-    }
+    // Apply multipliers based on deployment type
+    const multipliers: Record<string, number> = {
+      cloud: 0.8, // 20% cheaper for cloud deployments
+      hybrid: 1.2, // 20% more expensive for hybrid deployments
+      onPrem: 1.0, // Base cost for on-prem
+      onPremise: 1.0, // Alternative name for on-prem
+      managed: 1.5, // 50% more expensive for managed deployments
+    };
+
+    return multipliers[deploymentType] || 1.0;
   }
 
   /**
-   * Utility to sum up breakdown costs
+   * Get multiplier for support level
+   */
+  protected getSupportLevelMultiplier(request: AssetCostRequest): number {
+    const supportLevel = request.commonFields?.supportLevel || 'basic';
+
+    // Apply multipliers based on support level
+    const multipliers = {
+      basic: 1.0,
+      standard: 1.5,
+      premium: 2.0,
+      enterprise: 3.0,
+    };
+
+    return multipliers[supportLevel] || 1.0;
+  }
+
+  /**
+   * Helper method to calculate total cost from breakdown
    */
   protected calculateTotalFromBreakdown(breakdown: CostBreakdown): number {
     return Object.values(breakdown).reduce((sum, item) => sum + item.amount, 0);
   }
-
-  /**
-   * Apply multiplier based on deployment type
-   */
-  protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
-    const { deploymentType } = request.commonFields;
-    switch (deploymentType) {
-      case 'onPremise':
-        return 1.2;
-      case 'cloud':
-        return 1.0;
-      case 'hybrid':
-        return 1.3;
-      case 'managed':
-        return 1.5;
-      default:
-        return 1.0;
-    }
-  }
-
-  /**
-   * Apply multiplier based on support level
-   */
-  protected getSupportLevelMultiplier(request: AssetCostRequest): number {
-    const { supportLevel } = request.commonFields;
-    switch (supportLevel) {
-      case 'basic':
-        return 1.0;
-      case 'standard':
-        return 1.2;
-      case 'premium':
-        return 1.5;
-      default:
-        return 1.0;
-    }
-  }
-} 
+}

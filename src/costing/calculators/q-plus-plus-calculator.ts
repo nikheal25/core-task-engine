@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { AssetCostRequest, CostBreakdown } from '../interfaces/costing.interface';
+import {
+  AssetCostRequest,
+  CostBreakdown,
+} from '../interfaces/costing.interface';
 import { BaseCalculator } from './base-calculator';
 
 interface QPlusPlusSpecificFields {
@@ -12,17 +15,17 @@ interface QPlusPlusSpecificFields {
 @Injectable()
 export class QPlusPlusCalculator extends BaseCalculator {
   protected assetType = 'Q++';
-  
+
   /**
    * Q++-specific location rates in USD
    */
   protected getLocationRates(): Record<string, number> {
     return {
-      'US': 35000,
-      'EU': 40000,
-      'APAC': 32000,
-      'UK': 42000,
-      'LATAM': 30000,
+      US: 35000,
+      EU: 40000,
+      APAC: 32000,
+      UK: 42000,
+      LATAM: 30000,
     };
   }
 
@@ -31,24 +34,43 @@ export class QPlusPlusCalculator extends BaseCalculator {
   ): Promise<{ total: number; breakdown: CostBreakdown }> {
     const specificFields = request.specificFields as QPlusPlusSpecificFields;
     const deploymentMultiplier = this.getDeploymentTypeMultiplier(request);
-    
+
     // Calculate per-module cost
     const moduleBaseCost = 3000;
     const moduleCost = specificFields.modules.length * moduleBaseCost;
-    
+
     // Calculate integration costs
     const integrationCost = specificFields.dataIntegrations * 5000;
-    
+
     // Storage costs
     const storageSetupCost = {
       small: 2000,
       medium: 5000,
       large: 12000,
     };
-    
-    // Calculate effort-based cost using the common calculation
-    const effortBasedCost = this.calculateEffortBasedBuildCost(request);
-    
+
+    // Calculate effort-based costs for each component
+    const componentCosts = request.assetComponents.map((component) => {
+      return {
+        component: component.name,
+        cost: this.calculateEffortBasedBuildCost(component),
+      };
+    });
+
+    // Create the combined effort-based cost
+    const totalEffortCost = componentCosts.reduce(
+      (sum, item) => sum + item.cost.amount,
+      0,
+    );
+    const componentDescriptions = componentCosts.map(
+      (item) => `${item.component}: ${item.cost.description}`,
+    );
+
+    const effortBasedCost = {
+      amount: totalEffortCost,
+      description: `Effort-based build costs: ${componentDescriptions.join('; ')}`,
+    };
+
     // Calculate breakdown
     const breakdown: CostBreakdown = {
       baseSetup: {
@@ -77,47 +99,54 @@ export class QPlusPlusCalculator extends BaseCalculator {
         description: `Deployment cost (${request.commonFields.deploymentType})`,
       },
     };
-    
+
     // Calculate total
     const total = this.calculateTotalFromBreakdown(breakdown);
-    
+
     return { total, breakdown };
   }
 
-  protected async calculateRunCost(
-    request: AssetCostRequest,
-  ): Promise<{ total: number; breakdown: CostBreakdown; period: 'monthly' | 'yearly' }> {
+  protected async calculateRunCost(request: AssetCostRequest): Promise<{
+    total: number;
+    breakdown: CostBreakdown;
+    period: 'monthly' | 'yearly';
+  }> {
     const specificFields = request.specificFields as QPlusPlusSpecificFields;
     const supportMultiplier = this.getSupportLevelMultiplier(request);
-    
+
     // Storage monthly costs
     const storageRunCost = {
       small: 500,
       medium: 1500,
       large: 4000,
     };
-    
+
     // Calculate operational costs by location
     let operationalCost = 0;
     const locations: string[] = [];
-    
-    for (const resource of request.resourceModel) {
-      // Different monthly operational cost by location
-      const locationRate = {
-        'US': 1000,
-        'EU': 1200,
-        'APAC': 900,
-        'UK': 1300,
-        'LATAM': 800,
-      }[resource.location] || 1000;
-      
-      operationalCost += (locationRate * resource.allocation) / 100;
-      locations.push(resource.location);
+
+    for (const component of request.assetComponents) {
+      for (const resource of component.resourceModel) {
+        // Different monthly operational cost by location
+        const locationRate =
+          {
+            US: 1000,
+            EU: 1200,
+            APAC: 900,
+            UK: 1300,
+            LATAM: 800,
+          }[resource.location] || 1000;
+
+        operationalCost += (locationRate * resource.allocation) / 100;
+        if (!locations.includes(resource.location)) {
+          locations.push(resource.location);
+        }
+      }
     }
-    
+
     // User license costs
     const perUserCost = 25;
-    
+
     // Calculate breakdown
     const breakdown: CostBreakdown = {
       licensing: {
@@ -145,14 +174,14 @@ export class QPlusPlusCalculator extends BaseCalculator {
         description: `${request.commonFields.supportLevel || 'basic'} level support`,
       },
     };
-    
+
     // Calculate total
     const total = this.calculateTotalFromBreakdown(breakdown);
-    
-    return { 
-      total, 
-      breakdown, 
+
+    return {
+      total,
+      breakdown,
       period: 'monthly',
     };
   }
-} 
+}

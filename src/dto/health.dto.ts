@@ -18,4 +18,4 @@ export class HealthCheckResponseDto {
     example: '2023-01-01T00:00:00.000Z',
   })
   timestamp: string;
-} 
+}

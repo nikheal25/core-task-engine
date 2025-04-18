@@ -11,10 +11,10 @@ export class CostingController {
 
   @Post()
   @ApiOperation({ summary: 'Calculate cost for an asset' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Cost calculation successful',
-    type: AssetCostResponseDto
+    type: AssetCostResponseDto,
   })
   async calculateAssetCost(
     @Body(new ValidationPipe({ transform: true })) request: CostRequestDto,
@@ -24,8 +24,8 @@ export class CostingController {
 
   @Get('asset-types')
   @ApiOperation({ summary: 'Get all available asset types' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'List of available asset types',
     schema: {
       type: 'object',
@@ -33,13 +33,13 @@ export class CostingController {
         assetTypes: {
           type: 'array',
           items: {
-            type: 'string'
-          }
-        }
-      }
-    }
+            type: 'string',
+          },
+        },
+      },
+    },
   })
   getAvailableAssetTypes(): { assetTypes: string[] } {
     return { assetTypes: this.costingService.getAvailableAssetTypes() };
   }
-} 
+}

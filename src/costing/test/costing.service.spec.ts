@@ -3,9 +3,16 @@ import { CostingService } from '../services/costing.service';
 import { AtrCalculator } from '../calculators/atr-calculator';
 import { QPlusPlusCalculator } from '../calculators/q-plus-plus-calculator';
 import { NotFoundException } from '@nestjs/common';
-import { atrCostingExample, qPlusPlusCostingExample } from '../examples/costing-example';
+import {
+  atrCostingExample,
+  qPlusPlusCostingExample,
+} from '../examples/costing-example';
 import { AssetCostRequest } from '../interfaces/costing.interface';
-import { CostRequestDto, DeploymentType, SupportLevel } from '../dto/cost-request.dto';
+import {
+  CostRequestDto,
+  DeploymentType,
+  SupportLevel,
+} from '../dto/cost-request.dto';
 
 describe('CostingService', () => {
   let service: CostingService;
@@ -18,32 +25,28 @@ describe('CostingService', () => {
     commonFields: {
       ...atrCostingExample.commonFields,
       deploymentType: DeploymentType.CLOUD,
-      supportLevel: SupportLevel.STANDARD
-    }
+      supportLevel: SupportLevel.STANDARD,
+    },
   } as CostRequestDto;
-  
+
   const qPlusPlusRequest = {
     ...qPlusPlusCostingExample,
     commonFields: {
       ...qPlusPlusCostingExample.commonFields,
       deploymentType: DeploymentType.HYBRID,
-      supportLevel: SupportLevel.PREMIUM
-    }
+      supportLevel: SupportLevel.PREMIUM,
+    },
   } as CostRequestDto;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CostingService,
-        AtrCalculator,
-        QPlusPlusCalculator,
-      ],
+      providers: [CostingService, AtrCalculator, QPlusPlusCalculator],
     }).compile();
 
     service = module.get<CostingService>(CostingService);
     atrCalculator = module.get<AtrCalculator>(AtrCalculator);
     qPlusPlusCalculator = module.get<QPlusPlusCalculator>(QPlusPlusCalculator);
-    
+
     // Register calculators
     service.registerCalculator(atrCalculator);
     service.registerCalculator(qPlusPlusCalculator);
@@ -63,7 +66,7 @@ describe('CostingService', () => {
   it('should get calculator by assetType', () => {
     const calculator = service.getCalculator('ATR');
     expect(calculator).toBe(atrCalculator);
-    
+
     const calculator2 = service.getCalculator('Q++');
     expect(calculator2).toBe(qPlusPlusCalculator);
   });
@@ -74,14 +77,14 @@ describe('CostingService', () => {
 
   it('should calculate asset cost for ATR asset', async () => {
     const result = await service.calculateAssetCost(atrRequest);
-    
+
     expect(result).toBeDefined();
     expect(result.assetType).toBe('ATR');
     expect(result.buildCost).toBeDefined();
     expect(result.buildCost.total).toBeGreaterThan(0);
     expect(result.buildCost.breakdown).toBeDefined();
     expect(result.buildCost.breakdown.effortBased).toBeDefined();
-    
+
     expect(result.runCost).toBeDefined();
     expect(result.runCost.total).toBeGreaterThan(0);
     expect(result.runCost.period).toBe('monthly');
@@ -90,17 +93,17 @@ describe('CostingService', () => {
 
   it('should calculate asset cost for Q++ asset', async () => {
     const result = await service.calculateAssetCost(qPlusPlusRequest);
-    
+
     expect(result).toBeDefined();
     expect(result.assetType).toBe('Q++');
     expect(result.buildCost).toBeDefined();
     expect(result.buildCost.total).toBeGreaterThan(0);
     expect(result.buildCost.breakdown).toBeDefined();
     expect(result.buildCost.breakdown.effortBased).toBeDefined();
-    
+
     expect(result.runCost).toBeDefined();
     expect(result.runCost.total).toBeGreaterThan(0);
     expect(result.runCost.period).toBe('monthly');
     expect(result.runCost.breakdown).toBeDefined();
   });
-}); 
+});

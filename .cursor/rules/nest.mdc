@@ -16,6 +16,7 @@ You are a senior TypeScript programmer with experience in the NestJS framework a
 - Use JSDoc to document public classes and methods.
 - Don't leave blank lines within a function.
 - One export per file.
+- Don't run linter command, if needed as user to do it
 
 ### Nomenclature
 

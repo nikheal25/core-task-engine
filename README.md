@@ -68,14 +68,19 @@ curl -X POST http://localhost:3000/costing \
       "deploymentType": "cloud",
       "supportLevel": "standard"
     },
-    "resourceModel": [
+    "assetComponents": [
       {
-        "location": "US",
-        "allocation": 60
-      },
-      {
-        "location": "EU",
-        "allocation": 40
+        "name": "Main Component",
+        "resourceModel": [
+          {
+            "location": "US",
+            "allocation": 60
+          },
+          {
+            "location": "EU",
+            "allocation": 40
+          }
+        ]
       }
     ],
     "specificFields": {
@@ -85,81 +90,3 @@ curl -X POST http://localhost:3000/costing \
     }
   }'
 ```
-
-### Getting Available Asset Types
-
-To get a list of all available asset types, send a GET request to the `/costing/asset-types` endpoint:
-
-```bash
-curl -X GET http://localhost:3000/costing/asset-types
-```
-
-## Documentation
-
-Comprehensive documentation is available in the `docs` directory:
-
-### Developer Guides
-
-- [Adding New Asset Calculators](./docs/developer-guide/adding-asset-calculators.md) - How to add new asset types
-- [Coding Standards](./docs/developer-guide/coding-standards.md) - Code style and formatting guidelines
-- [Environment Setup](./docs/developer-guide/environment-setup.md) - Setting up your development environment
-- [Getting Started](./docs/developer-guide/getting-started.md) - First steps for development
-
-### Architecture and Design
-
-- [Costing Architecture](./docs/costing-architecture.md) - Overview of the costing system design
-
-## Testing
-
-```bash
-# Run unit tests
-pnpm run test
-
-# Run tests with coverage
-pnpm run test:cov
-
-# Run end-to-end tests
-pnpm run test:e2e
-```
-
-## Docker Support
-
-This project includes Docker support for easy deployment.
-
-```bash
-# Build and run with Docker
-docker-compose up
-
-# Run in production mode
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
-```
-
-For more details, see the [Docker Guide](./docs/developer-guide/docker-guide.md).
-
-## Project Structure
-
-```
-/
-├── src/
-│   ├── costing/                  # Costing module
-│   │   ├── calculators/          # Asset-specific calculators
-│   │   ├── dto/                  # Data Transfer Objects
-│   │   ├── interfaces/           # Interfaces and types
-│   │   ├── services/             # Services
-│   │   ├── test/                 # Tests
-│   │   ├── costing.controller.ts # Controller
-│   │   └── costing.module.ts     # Module definition
-│   └── app.module.ts             # Main application module
-├── docs/                         # Documentation
-│   ├── developer-guide/          # Developer guides
-│   └── assets/                   # Documentation assets
-└── test/                         # End-to-end tests
-```
-
-## Commit Standards
-
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/) format. For more details, see the [Commit Standards](./docs/developer-guide/commit-standards.md) document.
-
-## License
-
-This project is proprietary software and is not publicly licensed.

@@ -87,22 +87,31 @@ export class DatabaseCalculator extends BaseCalculator {
     const specificFields = request.specificFields as DatabaseSpecificFields;
     const supportMultiplier = this.getSupportLevelMultiplier(request);
     
-    // Calculate operational costs by location
+    // Calculate operational costs by component and location
     let operationalCost = 0;
-    const locations: string[] = [];
+    const componentDetails: string[] = [];
     
-    for (const resource of request.resourceModel) {
-      // Define location-specific costs
-      const locationRate = {
-        'US': 500,
-        'EU': 600,
-        'APAC': 450,
-        'UK': 650,
-        'LATAM': 400,
-      }[resource.location] || 500;
+    for (const component of request.assetComponents) {
+      let componentCost = 0;
+      const locations: string[] = [];
       
-      operationalCost += (locationRate * resource.allocation) / 100;
-      locations.push(resource.location);
+      for (const resource of component.resourceModel) {
+        // Define location-specific costs
+        const locationRate = {
+          'US': 500,
+          'EU': 600,
+          'APAC': 450,
+          'UK': 650,
+          'LATAM': 400,
+        }[resource.location] || 500;
+        
+        const cost = (locationRate * resource.allocation) / 100;
+        componentCost += cost;
+        locations.push(resource.location);
+      }
+      
+      operationalCost += componentCost;
+      componentDetails.push(`${component.name} (${locations.join(', ')})`);
     }
     
     // Calculate breakdown
@@ -127,7 +136,7 @@ export class DatabaseCalculator extends BaseCalculator {
       },
       operational: {
         amount: operationalCost,
-        description: `Operational cost based on locations: ${locations.join(', ')}`,
+        description: `Operational cost based on components: ${componentDetails.join(', ')}`,
       },
       support: {
         amount: 1000 * supportMultiplier,
@@ -201,22 +210,27 @@ export const databaseCostingExample = {
     region: 'us-east-1',
     supportLevel: 'standard'
   },
-  resourceModel: [
+  assetComponents: [
     {
-      location: 'US',
-      allocation: 70
-    },
-    {
-      location: 'EU',
-      allocation: 30
+      name: 'Database',
+      resourceModel: [
+        {
+          location: 'US',
+          allocation: 70
+        },
+        {
+          location: 'EU',
+          allocation: 30
+        }
+      ],
+      specificFields: {
+        instanceSize: 'medium',
+        storageGB: 500,
+        haEnabled: true,
+        backupRetentionDays: 7
+      }
     }
-  ],
-  specificFields: {
-    instanceSize: 'medium',
-    storageGB: 500,
-    haEnabled: true,
-    backupRetentionDays: 7
-  }
+  ]
 };
 ```
 
@@ -256,15 +270,20 @@ describe('DatabaseCalculator', () => {
         deploymentType: 'cloud',
         supportLevel: 'standard',
       },
-      resourceModel: [
-        { location: 'US', allocation: 100 },
-      ],
-      specificFields: {
-        instanceSize: 'medium',
-        storageGB: 500,
-        haEnabled: true,
-        backupRetentionDays: 7,
-      },
+      assetComponents: [
+        {
+          name: 'Database',
+          resourceModel: [
+            { location: 'US', allocation: 100 },
+          ],
+          specificFields: {
+            instanceSize: 'medium',
+            storageGB: 500,
+            haEnabled: true,
+            backupRetentionDays: 7,
+          },
+        }
+      ]
     } as AssetCostRequest;
 
     const result = await calculator.calculateCosts(request);
