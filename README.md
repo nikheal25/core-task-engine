@@ -55,10 +55,7 @@ http://localhost:3000/api/docs
 
 ## Linting and Formatting
 
-This project uses ESLint with the Airbnb style guide and Prettier for code formatting. Ensure your code adheres to these standards before committing.
-
-- To format the code: `pnpm format`
-- To lint the code and fix automatically fixable issues: `pnpm lint`
+This project uses ESLint and Prettier to enforce code style and quality. See the [Linting and Formatting Guide](./docs/developer-guide/linting-formatting.md) for details on configuration and usage.
 
 ## Costing API
 
