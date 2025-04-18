@@ -18,6 +18,7 @@ import {
   ResourceAllocation,
   AssetComponent,
 } from '../interfaces/costing.interface';
+import { ComplexityLevel } from '../calculators/base-calculator';
 
 export enum DeploymentType {
   ON_PREMISE = 'onPremise',
@@ -44,7 +45,7 @@ export class CommonFieldsDto implements CommonFields {
   @ApiProperty({
     description: 'Deployment region',
     required: false,
-    example: 'us-east-1',
+    example: 'americas',
   })
   @IsString()
   @IsOptional()
@@ -85,7 +86,7 @@ export class ResourceAllocationDto implements ResourceAllocation {
 export class AssetComponentDto implements AssetComponent {
   @ApiProperty({
     description: 'Component name',
-    example: 'Frontend',
+    example: 'Ingition',
   })
   @IsString()
   @IsNotEmpty()
@@ -96,12 +97,12 @@ export class AssetComponentDto implements AssetComponent {
     type: [ResourceAllocationDto],
     example: [
       {
-        location: 'US',
-        allocation: 50,
+        location: 'India',
+        allocation: 90,
       },
       {
-        location: 'EU',
-        allocation: 50,
+        location: 'Australia',
+        allocation: 10,
       },
     ],
   })
@@ -114,11 +115,21 @@ export class AssetComponentDto implements AssetComponent {
 
 export class CostRequestDto {
   @ApiProperty({
-    description: 'Type of asset to calculate cost for',
+    description: 'Name of asset to calculate cost for',
     example: 'ATR',
   })
   @IsString()
-  assetType: string;
+  assetName: string;
+
+  @ApiProperty({
+    description: 'Complexity level, required for ATR',
+    enum: ['xSmall', 'Small', 'Medium', 'Large', 'xLarge'],
+    example: 'Medium',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  complexity?: ComplexityLevel;
 
   @ApiProperty({
     description: 'Common fields used across all asset types',
@@ -133,30 +144,30 @@ export class CostRequestDto {
     type: [AssetComponentDto],
     example: [
       {
-        name: 'Frontend',
+        name: 'Ignition',
         resourceModel: [
           {
-            location: 'US',
-            allocation: 60,
+            location: 'India',
+            allocation: 90,
           },
           {
-            location: 'EU',
-            allocation: 40,
+            location: 'Australia',
+            allocation: 10,
           },
         ],
       },
       {
-        name: 'Backend',
-        resourceModel: [
+        "name": "automation configuration",
+        "resourceModel": [
           {
-            location: 'US',
-            allocation: 70,
+            "location": "India",
+            "allocation": 90
           },
           {
-            location: 'APAC',
-            allocation: 30,
-          },
-        ],
+            "location": "Australia",
+            "allocation": 10
+          }
+        ]
       },
     ],
   })
@@ -167,12 +178,11 @@ export class CostRequestDto {
   assetComponents: AssetComponentDto[];
 
   @ApiProperty({
-    description: 'Asset-specific fields required for cost calculation',
+    description: 'Asset-specific fields required for cost calculation. For run cost calculation, licenseCount is required.',
     example: {
-      complexity: 'medium',
       licenseCount: 25,
       hasCustomComponents: true,
-    },
+    }
   })
   @IsObject()
   specificFields: Record<string, any>;

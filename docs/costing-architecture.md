@@ -80,7 +80,7 @@ All assets share common fields that affect their pricing:
 ```json
 "commonFields": {
   "deploymentType": "cloud",
-  "region": "us-east-1",
+  "region": "americas",
   "supportLevel": "standard"
 }
 ```
@@ -127,7 +127,7 @@ The system is designed to be easily extended with new asset types. For detailed 
   "assetType": "ATR",
   "commonFields": {
     "deploymentType": "cloud",
-    "region": "us-east-1",
+    "region": "americas",
     "supportLevel": "standard"
   },
   "assetComponents": [

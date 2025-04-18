@@ -207,7 +207,7 @@ export const databaseCostingExample = {
   assetType: 'Database',
   commonFields: {
     deploymentType: 'cloud',
-    region: 'us-east-1',
+    region: 'americas',
     supportLevel: 'standard'
   },
   assetComponents: [

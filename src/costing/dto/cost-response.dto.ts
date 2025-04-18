@@ -53,10 +53,10 @@ export class RunCostDto extends CostCategoryDto {
 
 export class AssetCostResponseDto {
   @ApiProperty({
-    description: 'Type of asset',
+    description: 'Name of asset',
     example: 'ATR',
   })
-  assetType: string;
+  assetName: string;
 
   @ApiProperty({
     description: 'One-time build costs',

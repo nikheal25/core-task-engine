@@ -3,13 +3,14 @@ import {
   CostBreakdown,
   AssetComponent,
 } from '../interfaces/costing.interface';
-import { BaseCalculator } from '../calculators/base-calculator';
+import { BaseCalculator, ComplexityLevel } from '../calculators/base-calculator';
 
 // Create a concrete implementation of BaseCalculator for testing
 class TestCalculator extends BaseCalculator {
-  protected assetType = 'TEST';
+  protected assetName = 'TEST';
 
-  protected getLocationRates(): Record<string, number> {
+  // Add location rates for the calculator
+  private getLocationRates(): Record<string, number> {
     return {
       US: 15000,
       EU: 18000,
@@ -17,51 +18,100 @@ class TestCalculator extends BaseCalculator {
     };
   }
 
-  protected async calculateBuildCost(
-    request: AssetCostRequest,
-  ): Promise<{ total: number; breakdown: CostBreakdown }> {
-    // Calculate effort-based costs for each component
-    const componentCosts = request.assetComponents.map((component) => {
-      return {
-        component: component.name,
-        cost: this.calculateEffortBasedBuildCost(component),
-      };
-    });
-
-    // Create the combined effort-based cost
-    const totalEffortCost = componentCosts.reduce(
-      (sum, item) => sum + item.cost.amount,
-      0,
-    );
-
-    const effortBasedCost = {
-      amount: totalEffortCost,
-      description: `Combined effort-based costs`,
+  // Helper method to calculate effort-based build cost for a component
+  // This is for backward compatibility
+  private calculateEffortBasedBuildCost(component: AssetComponent): CostBreakdown {
+    // Simple implementation for tests
+    let amount = 0;
+    const description: string[] = [];
+    
+    for (const resource of component.resourceModel) {
+      let rate = this.getLocationRates()[resource.location];
+      if (!rate) {
+        rate = 10000; // Default rate
+      }
+      
+      const allocation = resource.allocation / 100;
+      const resourceAmount = rate * allocation;
+      amount += resourceAmount;
+      
+      description.push(`${resource.location} (${resource.allocation}%)`);
+    }
+    
+    return {
+      costComponentName: component.name,
+      amount,
+      description: `Development effort for ${component.name} in ${description.join(', ')}`,
+      isError: false,
+      errorMessage: '',
     };
-
-    const breakdown: CostBreakdown = {
-      effortBased: effortBasedCost,
-      base: {
-        amount: 5000,
-        description: 'Base cost',
-      },
-    };
-
-    const total = this.calculateTotalFromBreakdown(breakdown);
-    return { total, breakdown };
   }
 
-  protected async calculateRunCost(request: AssetCostRequest): Promise<{
-    total: number;
-    breakdown: CostBreakdown;
-    period: 'monthly' | 'yearly';
-  }> {
-    const breakdown: CostBreakdown = {
-      support: {
+  // Implementation of deployment type multiplier
+  protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
+    const deploymentType = request.commonFields.deploymentType;
+    
+    switch (deploymentType) {
+      case 'onPremise':
+        return 1.2;
+      case 'cloud':
+        return 1.0;
+      case 'hybrid':
+        return 1.3;
+      case 'managed':
+        return 1.5;
+      default:
+        return 1.0;
+    }
+  }
+
+  // Implementation of support level multiplier
+  protected getSupportLevelMultiplier(request: AssetCostRequest): number {
+    const supportLevel = request.commonFields.supportLevel || 'standard';
+    
+    switch (supportLevel) {
+      case 'basic':
+        return 1.0;
+      case 'standard':
+        return 1.2;
+      case 'premium':
+        return 1.5;
+      default:
+        return 1.0;
+    }
+  }
+
+  protected async calculateBuildCost(
+    request: AssetCostRequest
+  ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
+    // Calculate effort-based costs for each component
+    const componentBreakdowns: CostBreakdown[] = request.assetComponents.map((component) => {
+      return this.calculateEffortBasedBuildCost(component);
+    });
+
+    // Add base cost
+    componentBreakdowns.push({
+      costComponentName: 'Base Cost',
+      amount: 5000,
+      description: 'Base cost',
+      isError: false,
+    });
+
+    const total = this.calculateTotalFromBreakdown(componentBreakdowns);
+    return { total, breakdown: componentBreakdowns };
+  }
+
+  protected async calculateRunCost(
+    request: AssetCostRequest
+  ): Promise<{ total: number; breakdown: CostBreakdown[]; period: 'monthly' | 'yearly' }> {
+    const breakdown: CostBreakdown[] = [
+      {
+        costComponentName: 'Support',
         amount: 1000,
         description: 'Support cost',
-      },
-    };
+        isError: false,
+      }
+    ];
 
     const total = this.calculateTotalFromBreakdown(breakdown);
     return { total, breakdown, period: 'monthly' };
@@ -80,7 +130,7 @@ class TestCalculator extends BaseCalculator {
     return this.getSupportLevelMultiplier(request);
   }
 
-  public testCalculateTotalFromBreakdown(breakdown: CostBreakdown) {
+  public testCalculateTotalFromBreakdown(breakdown: CostBreakdown[]) {
     return this.calculateTotalFromBreakdown(breakdown);
   }
 
@@ -109,13 +159,13 @@ describe('BaseCalculator', () => {
     expect(calculator).toBeDefined();
   });
 
-  it('should return the correct asset type', () => {
-    expect(calculator.getAssetType()).toBe('TEST');
+  it('should return the correct asset name', () => {
+    expect(calculator.getAssetName()).toBe('TEST');
   });
 
   it('should calculate effort-based build cost correctly', () => {
     const request = {
-      assetType: 'TEST',
+      assetName: 'TEST',
       commonFields: {
         deploymentType: 'cloud',
       },
@@ -194,11 +244,11 @@ describe('BaseCalculator', () => {
   });
 
   it('should calculate total from breakdown correctly', () => {
-    const breakdown: CostBreakdown = {
-      a: { amount: 100, description: 'A' },
-      b: { amount: 200, description: 'B' },
-      c: { amount: 300, description: 'C' },
-    };
+    const breakdown: CostBreakdown[] = [
+      { costComponentName: 'A', amount: 100, description: 'A', isError: false },
+      { costComponentName: 'B', amount: 200, description: 'B', isError: false },
+      { costComponentName: 'C', amount: 300, description: 'C', isError: false },
+    ];
 
     expect(calculator.testCalculateTotalFromBreakdown(breakdown)).toBe(600);
   });
@@ -236,7 +286,7 @@ describe('BaseCalculator', () => {
 
   it('should calculate costs for a valid request', async () => {
     const request = {
-      assetType: 'TEST',
+      assetName: 'TEST',
       commonFields: {
         deploymentType: 'cloud',
       },
@@ -255,11 +305,12 @@ describe('BaseCalculator', () => {
     const result = await calculator.calculateCosts(request);
 
     expect(result).toBeDefined();
-    expect(result.assetType).toBe('TEST');
+    expect(result.assetName).toBe('TEST');
     expect(result.buildCost).toBeDefined();
     expect(result.buildCost.total).toBe(21500); // 16500 (effort) + 5000 (base)
     expect(result.buildCost.currency).toBe('USD');
-    expect(result.buildCost.breakdown.effortBased).toBeDefined();
+    expect(result.buildCost.breakdown).toBeInstanceOf(Array);
+    expect(result.buildCost.breakdown.length).toBeGreaterThan(0);
 
     expect(result.runCost).toBeDefined();
     expect(result.runCost.total).toBe(1000);
@@ -267,9 +318,9 @@ describe('BaseCalculator', () => {
     expect(result.runCost.period).toBe('monthly');
   });
 
-  it('should throw an error for invalid asset type', async () => {
+  it('should throw an error for invalid asset name', async () => {
     const request = {
-      assetType: 'INVALID',
+      assetName: 'INVALID',
       commonFields: {
         deploymentType: 'cloud',
       },

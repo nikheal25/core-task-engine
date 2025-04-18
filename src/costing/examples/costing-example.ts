@@ -5,7 +5,7 @@ export const atrCostingExample = {
   assetType: 'ATR',
   commonFields: {
     deploymentType: 'cloud',
-    region: 'us-east-1',
+    region: 'americas',
     supportLevel: 'standard',
   },
   assetComponents: [

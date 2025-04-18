@@ -17,12 +17,12 @@ interface QPlusPlusSpecificFields {
 
 @Injectable()
 export class QPlusPlusCalculator extends BaseCalculator {
-  protected assetType = 'QPlusPlus';
+  protected assetName = 'QPlusPlus';
 
   /**
    * Q++-specific location rates in USD
    */
-  protected getLocationRates(): Record<string, number> {
+  private getLocationRates(): Record<string, number> {
     return {
       US: 20000,
       EU: 22000,
@@ -191,7 +191,7 @@ export class QPlusPlusCalculator extends BaseCalculator {
     // Calculate effort-based costs for all components
     const costBreakdowns = this.calculateEffortBasedCosts(
       request.assetComponents,
-      complexity
+      complexity as ComplexityLevel
     );
     
     // Add database cost if specified
@@ -240,11 +240,9 @@ export class QPlusPlusCalculator extends BaseCalculator {
     }
     
     // Apply deployment type multiplier
-    const deploymentMultiplier = this.getDeploymentTypeMultiplier(request);
-    const supportMultiplier = this.getSupportLevelMultiplier(request);
-    
+
     // Apply multipliers to base run cost
-    const adjustedBaseRunCost = baseRunCost * deploymentMultiplier * supportMultiplier;
+    const adjustedBaseRunCost = baseRunCost;
 
     // Create breakdown
     const breakdown: CostBreakdown[] = [

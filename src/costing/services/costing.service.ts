@@ -11,14 +11,14 @@ export class CostingService {
   private calculators: Map<string, CostCalculator> = new Map();
 
   registerCalculator(calculator: CostCalculator): void {
-    this.calculators.set(calculator.getAssetType(), calculator);
+    this.calculators.set(calculator.getAssetName(), calculator);
   }
 
-  getCalculator(assetType: string): CostCalculator {
-    const calculator = this.calculators.get(assetType);
+  getCalculator(assetName: string): CostCalculator {
+    const calculator = this.calculators.get(assetName);
     if (!calculator) {
       throw new NotFoundException(
-        `No calculator found for asset type: ${assetType}`,
+        `No calculator found for asset name: ${assetName}`,
       );
     }
     return calculator;
@@ -27,9 +27,10 @@ export class CostingService {
   async calculateAssetCost(
     request: CostRequestDto,
   ): Promise<AssetCostResponse> {
-    const calculator = this.getCalculator(request.assetType);
+    const calculator = this.getCalculator(request.assetName);
     const assetRequest: AssetCostRequest = {
-      assetType: request.assetType,
+      assetName: request.assetName,
+      complexity: request.complexity,
       commonFields: request.commonFields,
       assetComponents: request.assetComponents,
       specificFields: request.specificFields,
@@ -37,7 +38,7 @@ export class CostingService {
     return calculator.calculateCosts(assetRequest);
   }
 
-  getAvailableAssetTypes(): string[] {
+  getAvailableAssetNames(): string[] {
     return Array.from(this.calculators.keys());
   }
 }

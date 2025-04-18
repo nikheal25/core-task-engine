@@ -24,7 +24,8 @@ export interface AssetComponent {
  * Base interface for all asset cost requests
  */
 export interface AssetCostRequest {
-  assetType: string;
+  assetName: string;
+  complexity?: string;
   commonFields: CommonFields;
   assetComponents: AssetComponent[];
   // resourceModel: ResourceAllocation[];
@@ -56,7 +57,7 @@ export interface CostBreakdown {
  * Standard cost response format
  */
 export interface AssetCostResponse {
-  assetType: string;
+  assetName: string;
   buildCost: {
     total: number;
     currency: string;
@@ -76,5 +77,5 @@ export interface AssetCostResponse {
  */
 export interface CostCalculator {
   calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse>;
-  getAssetType(): string;
+  getAssetName(): string;
 }

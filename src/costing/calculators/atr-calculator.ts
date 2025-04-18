@@ -6,30 +6,9 @@ import {
 } from '../interfaces/costing.interface';
 import { BaseCalculator, ComplexityLevel } from './base-calculator';
 
-interface AtrSpecificFields {
-  complexity?: ComplexityLevel;
-  licenseCount?: number;
-  hasCustomComponents?: boolean;
-}
-
 @Injectable()
 export class AtrCalculator extends BaseCalculator {
-  protected assetType = 'ATR';
-
-  /**
-   * Get location rates in USD for ATR efforts
-   */
-  protected getLocationRates(): Record<string, number> {
-    return {
-      US: 125,
-      UK: 110,
-      India: 35,
-      Poland: 60,
-      Romania: 45,
-      Philippines: 30,
-      Default: 100,
-    };
-  }
+  protected assetName = 'ATR';
 
   /**
    * Get blended hourly rates for ATR by complexity and location
@@ -63,19 +42,19 @@ export class AtrCalculator extends BaseCalculator {
     // Define effort hours by component, complexity, and location
     // These are example values and would typically come from a database
     const effortHoursByComponent: Record<string, Record<ComplexityLevel, Record<string, number>>> = {
-      'Ignition': {
+      'ignition': {
         xSmall: { Australia: 19.39, India: 21.14 },
         Small: {  Australia: 21.34, India: 23.1 },
         Medium: {  Australia: 31.25, India: 32.8 },
         Large: {  Australia: 41.20, India: 42.6 },
         xLarge: {  Australia: 50.91, India: 52.47 },
       },
-      'Test Execution Engine': {
-        xSmall: { Australia: 19.39, India: 19.39 },
-        Small: { Australia: 21.34, India: 21.34 },
-        Medium: { Australia: 31.25, India: 31.25 },
-        Large: { Australia: 41.20, India: 41.20 },
-        xLarge: { Australia: 50.91, India: 50.91 },
+      'automation configuration': {
+        xSmall: { Australia: 21.35, India: 10 },
+        Small: { Australia: 20.92, India: 10 },
+        Medium: { Australia: 17.76, India: 10 },
+        Large: { Australia: 15.52, India: 10 },
+        xLarge: { Australia: 13.11, India: 10 },
       },
     };
 
@@ -131,10 +110,11 @@ export class AtrCalculator extends BaseCalculator {
     request: AssetCostRequest
   ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
     const components = request.assetComponents;
-    const complexity = request.specificFields?.complexity as ComplexityLevel;
+    const complexity = request.complexity as ComplexityLevel;
     
+    // Validate that complexity is provided for ATR
     if (!complexity) {
-      throw new Error('Complexity must be specified for ATR cost calculation');
+      throw new Error('Complexity is mandatory for ATR cost calculation');
     }
     
     // Check if complexity is a valid ComplexityLevel

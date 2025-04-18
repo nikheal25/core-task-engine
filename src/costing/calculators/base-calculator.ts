@@ -19,16 +19,16 @@ export type ComplexityLevel = 'xSmall' | 'Small' | 'Medium' | 'Large' | 'xLarge'
 @Injectable()
 export abstract class BaseCalculator implements CostCalculator {
   /**
-   * The asset type that this calculator supports
+   * The asset name that this calculator supports
    * To be overridden by subclasses
    */
-  protected abstract assetType: string;
+  protected abstract assetName: string;
 
   /**
    * Location-based rates lookup
    * To be overridden by each asset-specific calculator
    */
-  protected abstract getLocationRates(): Record<string, number>;
+  // protected abstract getLocationRates(): Record<string, number>; 
 
   /**
    * Validates if the submitted asset components are valid for this asset type
@@ -78,46 +78,10 @@ export abstract class BaseCalculator implements CostCalculator {
   }
 
   /**
-   * Get the multiplier for a given deployment type
+   * Get the working hours per location
+   * @param location - The location to get working hours for
+   * @returns The working hours per location
    */
-  protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
-    const deploymentType = request.commonFields.deploymentType;
-    
-    // Default multipliers based on deployment type
-    switch (deploymentType) {
-      case 'onPremise':
-        return 1.2;
-      case 'cloud':
-        return 1.0;
-      case 'hybrid':
-        return 1.1;
-      case 'managed':
-        return 0.9;
-      default:
-        return 1.0;
-    }
-  }
-
-  /**
-   * Get the multiplier for a given support level
-   */
-  protected getSupportLevelMultiplier(request: AssetCostRequest): number {
-    const supportLevel = request.commonFields.supportLevel || 'standard';
-    
-    // Default multipliers based on support level
-    switch (supportLevel) {
-      case 'basic':
-        return 0.8;
-      case 'standard':
-        return 1.0;
-      case 'premium':
-        return 1.5;
-      default:
-        return 1.0;
-    }
-  }
-
-
   private getWorkingHoursPerLocation(location: string): number {
     switch (location) {
       case 'Australia':
@@ -193,11 +157,11 @@ export abstract class BaseCalculator implements CostCalculator {
   }
 
   /**
-   * Get the asset type for this calculator
-   * @returns The asset type for this calculator
+   * Get the asset name for this calculator
+   * @returns The asset name for this calculator
    */
-  public getAssetType(): string {
-    return this.assetType;
+  public getAssetName(): string {
+    return this.assetName;
   }
 
   /**
@@ -226,9 +190,9 @@ export abstract class BaseCalculator implements CostCalculator {
    */
   public async calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse> {
     // Validate the request
-    if (request.assetType !== this.assetType) {
+    if (request.assetName !== this.assetName) {
       throw new Error(
-        `Invalid asset type: ${request.assetType}. This calculator supports: ${this.assetType}`
+        `Invalid asset name: ${request.assetName}. This calculator supports: ${this.assetName}`
       );
     }
 
@@ -246,7 +210,7 @@ export abstract class BaseCalculator implements CostCalculator {
 
     // Return formatted response
     return {
-      assetType: this.assetType,
+      assetName: this.assetName,
       buildCost: {
         total: buildCostResult.total,
         currency: 'USD',

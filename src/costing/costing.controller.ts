@@ -24,15 +24,15 @@ export class CostingController {
     return this.mapToDto(response);
   }
 
-  @Get('asset-types')
-  @ApiOperation({ summary: 'Get all available asset types' })
+  @Get('asset-names')
+  @ApiOperation({ summary: 'Get all available asset names' })
   @ApiResponse({
     status: 200,
-    description: 'List of available asset types',
+    description: 'List of available asset names',
     schema: {
       type: 'object',
       properties: {
-        assetTypes: {
+        assetNames: {
           type: 'array',
           items: {
             type: 'string',
@@ -41,13 +41,13 @@ export class CostingController {
       },
     },
   })
-  getAvailableAssetTypes(): { assetTypes: string[] } {
-    return { assetTypes: this.costingService.getAvailableAssetTypes() };
+  getAvailableAssetNames(): { assetNames: string[] } {
+    return { assetNames: this.costingService.getAvailableAssetNames() };
   }
 
   private mapToDto(response: AssetCostResponse): AssetCostResponseDto {
     return {
-      assetType: response.assetType,
+      assetName: response.assetName,
       buildCost: {
         total: response.buildCost.total,
         currency: response.buildCost.currency,
