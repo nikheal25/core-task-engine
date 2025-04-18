@@ -186,9 +186,7 @@ export abstract class BaseCalculator implements CostCalculator {
    * Abstract method to calculate run costs
    * To be implemented by subclasses
    */
-  protected abstract calculateRunCost(
-    request: AssetCostRequest,
-  ): Promise<{
+  protected abstract calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';

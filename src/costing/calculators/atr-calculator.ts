@@ -163,9 +163,7 @@ export class AtrCalculator extends BaseCalculator {
   /**
    * Calculate run cost for ATR
    */
-  protected calculateRunCost(
-    request: AssetCostRequest,
-  ): Promise<{
+  protected calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';

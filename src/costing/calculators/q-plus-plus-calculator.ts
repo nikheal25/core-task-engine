@@ -225,9 +225,7 @@ export class QPlusPlusCalculator extends BaseCalculator {
     return Promise.resolve({ total, breakdown: costBreakdowns });
   }
 
-  protected calculateRunCost(
-    request: AssetCostRequest,
-  ): Promise<{
+  protected calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';

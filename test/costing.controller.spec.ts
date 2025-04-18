@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CostingController } from '../costing.controller';
-import { CostingService } from '../services/costing.service';
-import { CostRequestDto } from '../dto/cost-request.dto';
-import { AssetCostResponseDto } from '../dto/cost-response.dto';
-import { AtrCalculator } from '../calculators/atr-calculator';
-import { QPlusPlusCalculator } from '../calculators/q-plus-plus-calculator';
-import { DeploymentType, SupportLevel } from '../dto/cost-request.dto';
+import { CostingController } from '../src/costing/costing.controller';
+import { CostingService } from '../src/costing/services/costing.service';
+import { CostRequestDto } from '../src/costing/dto/cost-request.dto';
+import { AssetCostResponseDto } from '../src/costing/dto/cost-response.dto';
+import { AtrCalculator } from '../src/costing/calculators/atr-calculator';
+import { QPlusPlusCalculator } from '../src/costing/calculators/q-plus-plus-calculator';
+import { DeploymentType, SupportLevel } from '../src/costing/dto/cost-request.dto';
 
 describe('CostingController', () => {
   let controller: CostingController;
@@ -69,7 +69,8 @@ describe('CostingController', () => {
         },
       };
 
-      const result: AssetCostResponseDto = await controller.calculateAssetCost(request);
+      const result: AssetCostResponseDto =
+        await controller.calculateAssetCost(request);
       expect(result).toBeDefined();
       expect(result.assetName).toBe('ATR');
       expect(result.buildCost).toBeDefined();
@@ -86,9 +87,7 @@ describe('CostingController', () => {
         assetComponents: [
           {
             name: 'Frontend',
-            resourceModel: [
-              { location: 'US', allocation: 100 },
-            ],
+            resourceModel: [{ location: 'US', allocation: 100 }],
           },
         ],
         specificFields: {
@@ -97,7 +96,8 @@ describe('CostingController', () => {
         },
       };
 
-      const result: AssetCostResponseDto = await controller.calculateAssetCost(request);
+      const result: AssetCostResponseDto =
+        await controller.calculateAssetCost(request);
       expect(result).toBeDefined();
       expect(result.assetName).toBe('QPlusPlus');
       expect(result.buildCost).toBeDefined();
@@ -169,7 +169,9 @@ describe('CostingController', () => {
     describe('getAvailableAssetNames', () => {
       it('should return asset types from service', () => {
         const assetTypes = ['ATR', 'QPlusPlus'];
-        jest.spyOn(service, 'getAvailableAssetNames').mockReturnValue(assetTypes);
+        jest
+          .spyOn(service, 'getAvailableAssetNames')
+          .mockReturnValue(assetTypes);
 
         const result = controller.getAvailableAssetNames();
         expect(result.assetNames).toEqual(assetTypes);
