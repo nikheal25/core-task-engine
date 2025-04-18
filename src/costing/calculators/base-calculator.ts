@@ -7,167 +7,258 @@ import {
   CostCalculator,
   ResourceAllocation,
   AssetComponent,
+  EffortBreakdown,
 } from '../interfaces/costing.interface';
 
+// Define valid complexity levels as string literal union type
+export type ComplexityLevel = 'xSmall' | 'Small' | 'Medium' | 'Large' | 'xLarge';
+
 /**
- * Base calculator that all asset-specific calculators extend
+ * Base calculator providing common costing functionality for all asset calculators
  */
 @Injectable()
 export abstract class BaseCalculator implements CostCalculator {
+  /**
+   * The asset type that this calculator supports
+   * To be overridden by subclasses
+   */
   protected abstract assetType: string;
-  protected abstract calculateBuildCost(request: AssetCostRequest): Promise<{
-    total: number;
-    breakdown: CostBreakdown[];
-  }>;
-  protected abstract calculateRunCost(request: AssetCostRequest): Promise<{
+
+  /**
+   * Location-based rates lookup
+   * To be overridden by each asset-specific calculator
+   */
+  protected abstract getLocationRates(): Record<string, number>;
+
+  /**
+   * Validates if the submitted asset components are valid for this asset type
+   * @param components - components to validate
+   * @returns an array of validation errors, empty if all valid
+   */
+  protected validateComponents(components: AssetComponent[]): string[] {
+    const errors: string[] = [];
+
+    if (!components || components.length === 0) {
+      errors.push('No components specified');
+      return errors;
+    }
+
+    // Check for duplicate component names
+    const names = components.map((c) => c.name);
+    const uniqueNames = new Set(names);
+
+    if (uniqueNames.size !== components.length) {
+      errors.push('Duplicate component names found');
+    }
+
+    // Validation for each component
+    for (const component of components) {
+      if (!component.name) {
+        errors.push('Component missing name');
+      }
+
+      if (!component.resourceModel || component.resourceModel.length === 0) {
+        errors.push(`Component ${component.name || 'unnamed'} has no resource allocation`);
+      } else {
+        // Check that allocations sum to 100%
+        const totalAllocation = component.resourceModel.reduce(
+          (sum, resource) => sum + resource.allocation,
+          0
+        );
+
+        if (Math.abs(totalAllocation - 100) > 0.01) {
+          errors.push(
+            `Component ${component.name} resource allocations should sum to 100% (currently ${totalAllocation}%)`
+          );
+        }
+      }
+    }
+
+    return errors;
+  }
+
+  /**
+   * Get the multiplier for a given deployment type
+   */
+  protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
+    const deploymentType = request.commonFields.deploymentType;
+    
+    // Default multipliers based on deployment type
+    switch (deploymentType) {
+      case 'onPremise':
+        return 1.2;
+      case 'cloud':
+        return 1.0;
+      case 'hybrid':
+        return 1.1;
+      case 'managed':
+        return 0.9;
+      default:
+        return 1.0;
+    }
+  }
+
+  /**
+   * Get the multiplier for a given support level
+   */
+  protected getSupportLevelMultiplier(request: AssetCostRequest): number {
+    const supportLevel = request.commonFields.supportLevel || 'standard';
+    
+    // Default multipliers based on support level
+    switch (supportLevel) {
+      case 'basic':
+        return 0.8;
+      case 'standard':
+        return 1.0;
+      case 'premium':
+        return 1.5;
+      default:
+        return 1.0;
+    }
+  }
+
+
+  private getWorkingHoursPerLocation(location: string): number {
+    switch (location) {
+      case 'Australia':
+        return 8;
+      case 'India':
+        return 9;
+      default:
+        throw new Error(`Unknown location: ${location}`);
+    }
+  }
+
+  /**
+   * Calculate the cost of a component based on effort hours and blend rates
+   * @param component - The component to calculate costs for
+   * @param complexity - The complexity level (must be a valid ComplexityLevel)
+   * @param blendRates - Blend rates by location and complexity
+   * @param effortHours - Effort hours by location
+   */
+  protected calculateEffortBasedComponentCost(
+    component: AssetComponent,
+    complexity: ComplexityLevel,
+    blendRates: Record<string, Record<ComplexityLevel, number>>,
+    effortHours: Record<string, number>
+  ): CostBreakdown {
+    let totalAmount = 0;
+    const effortBreakdown: EffortBreakdown[] = [];
+    let totalEffortHours = 0;
+
+    for (const {allocation, location} of component.resourceModel) {
+      // Get blend rate for this location and complexity
+      const blendRate = blendRates[location]?.[complexity];
+
+      if (!blendRate) {
+        throw new Error(`Blend rate not found for location "${location}" at complexity "${complexity}"`);
+      }
+
+      const workingHours = this.getWorkingHoursPerLocation(location);
+
+      const effortsHrForLocation = (allocation/100) * workingHours * effortHours[location];
+
+      const amount = Number((effortsHrForLocation * blendRate).toFixed(2)); // * important: round to 2 decimal places
+      
+      totalAmount += amount;
+      totalEffortHours += effortsHrForLocation;
+
+      // Add to effort breakdown
+      effortBreakdown.push({
+        deliveryLocation: location,
+        effortHours: effortsHrForLocation,
+        effortAmount: amount,
+        effortHoursDescription: `${effortsHrForLocation} hours in ${location} at ${blendRate}/hour`,
+      });
+    }
+
+    // Create cost breakdown
+    return {
+      costComponentName: component.name,
+      amount: totalAmount,
+      description: `Development effort for ${component.name} at ${complexity} complexity`,
+      isError: false,
+      errorMessage: '',
+      effortHours: totalEffortHours,
+      effortHoursDescription: `Total: ${totalEffortHours} hours across all locations`,
+      effortBreakdown,
+    };
+  }
+
+  /**
+   * Calculate the total from a breakdown array
+   */
+  protected calculateTotalFromBreakdown(breakdown: CostBreakdown[]): number {
+    return breakdown.reduce((sum, item) => sum + item.amount, 0);
+  }
+
+  /**
+   * Get the asset type for this calculator
+   * @returns The asset type for this calculator
+   */
+  public getAssetType(): string {
+    return this.assetType;
+  }
+
+  /**
+   * Abstract method to calculate build costs
+   * To be implemented by subclasses
+   */
+  protected abstract calculateBuildCost(
+    request: AssetCostRequest
+  ): Promise<{ total: number; breakdown: CostBreakdown[] }>;
+
+  /**
+   * Abstract method to calculate run costs
+   * To be implemented by subclasses
+   */
+  protected abstract calculateRunCost(
+    request: AssetCostRequest
+  ): Promise<{
     total: number;
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }>;
 
   /**
-   * Location rates specific to each asset type, to be overridden by subclasses
+   * Main method to calculate asset costs
+   * Orchestrates the process and formats the response
    */
-  protected abstract getLocationRates(): Record<string, number>;
-
-  /**
-   * Calculate both build and run costs
-   * This is the main entry point for all calculators
-   */
-  async calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse> {
-    // Validate asset type
+  public async calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse> {
+    // Validate the request
     if (request.assetType !== this.assetType) {
-      throw new BadRequestException(
-        `Invalid asset type. Expected ${this.assetType}, got ${request.assetType}`,
+      throw new Error(
+        `Invalid asset type: ${request.assetType}. This calculator supports: ${this.assetType}`
       );
     }
 
-    // Validate resource model allocations
-    this.validateComponents(request.assetComponents);
+    // Validate components
+    const validationErrors = this.validateComponents(request.assetComponents);
+    if (validationErrors.length > 0) {
+      throw new Error(`Invalid request: ${validationErrors.join(', ')}`);
+    }
 
-    // Calculate costs
-    const buildCost = await this.calculateBuildCost(request);
-    const runCost = await this.calculateRunCost(request);
+    // Calculate build cost
+    const buildCostResult = await this.calculateBuildCost(request);
 
+    // Calculate run cost
+    const runCostResult = await this.calculateRunCost(request);
+
+    // Return formatted response
     return {
-      assetType: request.assetType,
+      assetType: this.assetType,
       buildCost: {
-        total: buildCost.total,
-        breakdown: buildCost.breakdown,
-        currency: 'USD', // Default currency
+        total: buildCostResult.total,
+        currency: 'USD',
+        breakdown: buildCostResult.breakdown,
       },
       runCost: {
-        total: runCost.total,
-        breakdown: runCost.breakdown,
-        period: runCost.period,
-        currency: 'USD', // Default currency
+        total: runCostResult.total,
+        currency: 'USD',
+        period: runCostResult.period,
+        breakdown: runCostResult.breakdown,
       },
       estimationDate: new Date(),
     };
-  }
-
-  public getAssetType(): string {
-    return this.assetType;
-  }
-
-  /**
-   * Helper method to calculate effort-based build cost
-   * based on resource allocations
-   */
-  protected calculateEffortBasedBuildCost(component: AssetComponent): {
-    amount: number;
-    description: string;
-  } {
-    const locationRates = this.getLocationRates();
-    let totalBuildCost = 0;
-    const allocations: string[] = [];
-
-    // Calculate cost for each location based on allocation percentage
-    for (const resource of component.resourceModel) {
-      const locationRate =
-        locationRates[resource.location] || locationRates['US'];
-      const cost = (locationRate * resource.allocation) / 100;
-      totalBuildCost += cost;
-      allocations.push(`${resource.location}: ${resource.allocation}%`);
-    }
-
-    return {
-      amount: totalBuildCost,
-      description: `Build effort for resource allocations (${allocations.join(', ')})`,
-    };
-  }
-
-  /**
-   * Validate that resource model allocations add up to 100%
-   */
-  protected validateComponents(components: AssetComponent[]): void {
-    if (!components || !components.length) {
-      throw new BadRequestException(
-        'At least one asset component with resource model is required',
-      );
-    }
-
-    // Validate each component's resource model
-    for (const component of components) {
-      if (!component.resourceModel || !component.resourceModel.length) {
-        throw new BadRequestException(
-          `Component "${component.name}" must have a resource model`,
-        );
-      }
-
-      // Check if allocations add up to 100%
-      const totalAllocation = component.resourceModel.reduce(
-        (sum, resource) => sum + resource.allocation,
-        0,
-      );
-
-      if (totalAllocation !== 100) {
-        throw new BadRequestException(
-          `Resource allocations for component "${component.name}" must add up to 100%, got ${totalAllocation}%`,
-        );
-      }
-    }
-  }
-
-  /**
-   * Get multiplier for deployment type
-   */
-  protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
-    const deploymentType = request.commonFields?.deploymentType || 'onPremise';
-
-    // Apply multipliers based on deployment type
-    const multipliers: Record<string, number> = {
-      cloud: 0.8, // 20% cheaper for cloud deployments
-      hybrid: 1.2, // 20% more expensive for hybrid deployments
-      onPrem: 1.0, // Base cost for on-prem
-      onPremise: 1.0, // Alternative name for on-prem
-      managed: 1.5, // 50% more expensive for managed deployments
-    };
-
-    return multipliers[deploymentType] || 1.0;
-  }
-
-  /**
-   * Get multiplier for support level
-   */
-  protected getSupportLevelMultiplier(request: AssetCostRequest): number {
-    const supportLevel = request.commonFields?.supportLevel || 'basic';
-
-    // Apply multipliers based on support level
-    const multipliers = {
-      basic: 1.0,
-      standard: 1.5,
-      premium: 2.0,
-      enterprise: 3.0,
-    };
-
-    return multipliers[supportLevel] || 1.0;
-  }
-
-  /**
-   * Helper method to calculate total cost from breakdown
-   */
-  protected calculateTotalFromBreakdown(breakdowns: CostBreakdown[]): number {
-    return breakdowns.reduce((sum, breakdown) => sum + breakdown.amount, 0);
   }
 }
