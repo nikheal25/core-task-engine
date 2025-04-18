@@ -17,11 +17,11 @@ export abstract class BaseCalculator implements CostCalculator {
   protected abstract assetType: string;
   protected abstract calculateBuildCost(request: AssetCostRequest): Promise<{
     total: number;
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
   }>;
   protected abstract calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }>;
 
@@ -167,7 +167,7 @@ export abstract class BaseCalculator implements CostCalculator {
   /**
    * Helper method to calculate total cost from breakdown
    */
-  protected calculateTotalFromBreakdown(breakdown: CostBreakdown): number {
-    return Object.values(breakdown).reduce((sum, item) => sum + item.amount, 0);
+  protected calculateTotalFromBreakdown(breakdowns: CostBreakdown[]): number {
+    return breakdowns.reduce((sum, breakdown) => sum + breakdown.amount, 0);
   }
 }

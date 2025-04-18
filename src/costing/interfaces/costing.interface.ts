@@ -31,14 +31,25 @@ export interface AssetCostRequest {
   specificFields: Record<string, any>;
 }
 
+export interface EffortBreakdown {
+  deliveryLocation: string;
+  effortHours: number;
+  effortAmount: number;
+  effortHoursDescription: string;
+}
+
 /**
  * Cost breakdown structure
  */
 export interface CostBreakdown {
-  [category: string]: {
+    costComponentName: string;
     amount: number;
     description: string;
-  };
+    isError: boolean;
+    errorMessage?: string;
+    effortHours?: number;
+    effortHoursDescription?: string;
+    effortBreakdown?: EffortBreakdown[];
 }
 
 /**
@@ -49,13 +60,13 @@ export interface AssetCostResponse {
   buildCost: {
     total: number;
     currency: string;
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
   };
   runCost: {
     total: number;
     currency: string;
     period: 'monthly' | 'yearly';
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
   };
   estimationDate: Date;
 }

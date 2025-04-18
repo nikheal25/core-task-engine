@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AssetCostRequest,
   CostBreakdown,
+  AssetComponent,
 } from '../interfaces/costing.interface';
 import { BaseCalculator } from './base-calculator';
 
@@ -29,9 +30,19 @@ export class QPlusPlusCalculator extends BaseCalculator {
     };
   }
 
+  private calculateIndividualComponentCost(component: AssetComponent): CostBreakdown {
+    return {
+      costComponentName: component.name,
+      amount: this.calculateEffortBasedBuildCost(component).amount,
+      description: this.calculateEffortBasedBuildCost(component).description,
+      isError: false,
+      errorMessage: '',
+    };
+  }
+
   protected async calculateBuildCost(
     request: AssetCostRequest,
-  ): Promise<{ total: number; breakdown: CostBreakdown }> {
+  ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
     const specificFields = request.specificFields as QPlusPlusSpecificFields;
     const deploymentMultiplier = this.getDeploymentTypeMultiplier(request);
 
@@ -50,65 +61,62 @@ export class QPlusPlusCalculator extends BaseCalculator {
     };
 
     // Calculate effort-based costs for each component
-    const componentCosts = request.assetComponents.map((component) => {
-      return {
-        component: component.name,
-        cost: this.calculateEffortBasedBuildCost(component),
-      };
+    const componentCostBreakdowns = request.assetComponents.map((component) => {
+      return this.calculateIndividualComponentCost(component);
     });
 
-    // Create the combined effort-based cost
-    const totalEffortCost = componentCosts.reduce(
-      (sum, item) => sum + item.cost.amount,
-      0,
-    );
-    const componentDescriptions = componentCosts.map(
-      (item) => `${item.component}: ${item.cost.description}`,
-    );
-
-    const effortBasedCost = {
-      amount: totalEffortCost,
-      description: `Effort-based build costs: ${componentDescriptions.join('; ')}`,
-    };
-
-    // Calculate breakdown
-    const breakdown: CostBreakdown = {
-      baseSetup: {
+    // Add other cost breakdowns
+    const otherCostBreakdowns: CostBreakdown[] = [
+      {
+        costComponentName: 'baseSetup',
         amount: 10000,
         description: 'Base Q++ platform setup',
+        isError: false,
       },
-      effortBased: effortBasedCost,
-      modules: {
+      {
+        costComponentName: 'modules',
         amount: moduleCost,
         description: `Setup of ${specificFields.modules.length} modules`,
+        isError: false,
       },
-      integrations: {
+      {
+        costComponentName: 'integrations',
         amount: integrationCost,
         description: `Setup of ${specificFields.dataIntegrations} data integrations`,
+        isError: false,
       },
-      userSetup: {
+      {
+        costComponentName: 'userSetup',
         amount: Math.ceil(specificFields.userCount / 50) * 1000,
         description: `User onboarding setup for ${specificFields.userCount} users`,
+        isError: false,
       },
-      storageSetup: {
+      {
+        costComponentName: 'storageSetup',
         amount: storageSetupCost[specificFields.storageRequirement],
         description: `${specificFields.storageRequirement} storage setup`,
+        isError: false,
       },
-      deployment: {
+      {
+        costComponentName: 'deployment',
         amount: 5000 * deploymentMultiplier,
         description: `Deployment cost (${request.commonFields.deploymentType})`,
+        isError: false,
       },
-    };
+    ];
 
-    // Calculate total
-    const total = this.calculateTotalFromBreakdown(breakdown);
+    // Combine all breakdowns
+    const allBreakdowns = [...componentCostBreakdowns, ...otherCostBreakdowns];
 
-    return { total, breakdown };
+    // Calculate total from breakdown
+    const total = this.calculateTotalFromBreakdown(allBreakdowns);
+
+    return { total, breakdown: allBreakdowns };
   }
 
   protected async calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }> {
     const specificFields = request.specificFields as QPlusPlusSpecificFields;
@@ -148,34 +156,46 @@ export class QPlusPlusCalculator extends BaseCalculator {
     const perUserCost = 25;
 
     // Calculate breakdown
-    const breakdown: CostBreakdown = {
-      licensing: {
+    const breakdown: CostBreakdown[] = [
+      {
+        costComponentName: 'licensing',
         amount: specificFields.userCount * perUserCost,
         description: `License fee for ${specificFields.userCount} users`,
+        isError: false,
       },
-      modulesMaintenance: {
+      {
+        costComponentName: 'modulesMaintenance',
         amount: specificFields.modules.length * 500,
         description: `Maintenance of ${specificFields.modules.length} modules`,
+        isError: false,
       },
-      integrationsMaintenance: {
+      {
+        costComponentName: 'integrationsMaintenance',
         amount: specificFields.dataIntegrations * 800,
         description: `Maintenance of ${specificFields.dataIntegrations} integrations`,
+        isError: false,
       },
-      storage: {
+      {
+        costComponentName: 'storage',
         amount: storageRunCost[specificFields.storageRequirement],
         description: `${specificFields.storageRequirement} storage monthly cost`,
+        isError: false,
       },
-      operational: {
+      {
+        costComponentName: 'operational',
         amount: operationalCost,
         description: `Operational cost based on locations: ${locations.join(', ')}`,
+        isError: false,
       },
-      support: {
+      {
+        costComponentName: 'support',
         amount: 2000 * supportMultiplier,
         description: `${request.commonFields.supportLevel || 'basic'} level support`,
+        isError: false,
       },
-    };
+    ];
 
-    // Calculate total
+    // Calculate total from breakdown
     const total = this.calculateTotalFromBreakdown(breakdown);
 
     return {

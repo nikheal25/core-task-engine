@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AssetCostRequest,
   CostBreakdown,
+  AssetComponent
 } from '../interfaces/costing.interface';
 import { BaseCalculator } from './base-calculator';
 
@@ -28,72 +29,57 @@ export class AtrCalculator extends BaseCalculator {
     };
   }
 
+  private calculateIndividualComponentCost(component: AssetComponent): CostBreakdown {
+    let costBreakdown: CostBreakdown = {
+      costComponentName: component.name,
+      amount: 100,
+      description: '',
+      isError: false,
+      errorMessage: '',
+    };
+    return costBreakdown;
+  }
+  
   protected async calculateBuildCost(
     request: AssetCostRequest,
-  ): Promise<{ total: number; breakdown: CostBreakdown }> {
+  ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
     const specificFields = request.specificFields as AtrSpecificFields;
 
-    // Base costs by complexity
-    const complexityBaseCost = {
-      low: 5000,
-      medium: 10000,
-      high: 20000,
-    };
-
     // Calculate effort-based costs for each component
-    const componentCosts = request.assetComponents.map((component) => {
-      return {
-        component: component.name,
-        cost: this.calculateEffortBasedBuildCost(component),
-      };
-    });
+    // * : this will be a list of cost breakdowns for each component
+    const costBreakdowns: CostBreakdown[] = [];
+    for (const component of request.assetComponents) {
+      try {
+        const costBreakdown = this.calculateIndividualComponentCost(component);
+        costBreakdowns.push(costBreakdown);
+      } catch (error) {
+        console.log(`Error calculating individual component cost: ${component.name}`);
+        
+        console.error(error);
 
-    // Create the combined effort-based cost
-    const totalEffortCost = componentCosts.reduce(
-      (sum, item) => sum + item.cost.amount,
-      0,
-    );
-    const componentDescriptions = componentCosts.map(
-      (item) => `${item.component}: ${item.cost.description}`,
-    );
+        // if error while calculating individual component cost, add error to cost breakdown
+        costBreakdowns.push({
+          costComponentName: component.name,
+          amount: 0,
+          description: '',
+          isError: true,
+          errorMessage: error.message,
+        });
+      }
+      
+    }
 
-    const effortBasedCost = {
-      amount: totalEffortCost,
-      description: `Effort-based build costs: ${componentDescriptions.join('; ')}`,
-    };
-
-    // Calculate breakdown
-    const breakdown: CostBreakdown = {
-      baseBuild: {
-        amount: complexityBaseCost[specificFields.complexity],
-        description: `Base build cost for ${specificFields.complexity} complexity`,
-      },
-      effortBased: effortBasedCost,
-      deployment: {
-        amount: 2000 * this.getDeploymentTypeMultiplier(request),
-        description: 'Deployment setup cost',
-      },
-      licensing: {
-        amount: specificFields.licenseCount * 500,
-        description: `License setup for ${specificFields.licenseCount} licenses`,
-      },
-      customization: {
-        amount: specificFields.hasCustomComponents ? 8000 : 0,
-        description: specificFields.hasCustomComponents
-          ? 'Custom components development'
-          : 'No custom components',
-      },
-    };
+    // TODO: use case cost breakdowns
 
     // Calculate total from breakdown
-    const total = this.calculateTotalFromBreakdown(breakdown);
+    const total = this.calculateTotalFromBreakdown(costBreakdowns);
 
-    return { total, breakdown };
+    return { total: total, breakdown: costBreakdowns };
   }
 
   protected async calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }> {
     const specificFields = request.specificFields as AtrSpecificFields;
@@ -128,36 +114,20 @@ export class AtrCalculator extends BaseCalculator {
     }
 
     // Calculate breakdown
-    const breakdown: CostBreakdown = {
-      license: {
-        amount: specificFields.licenseCount * 100,
-        description: `Monthly license fee for ${specificFields.licenseCount} licenses`,
-      },
-      support: {
-        amount: 1000 * supportMultiplier,
-        description: `Support cost with ${request.commonFields.supportLevel || 'basic'} level`,
-      },
-      operational: {
-        amount: operationalCost,
-        description: `Operational cost based on components: ${componentDetails.join('; ')}`,
-      },
-      maintenance: {
-        amount:
-          specificFields.complexity === 'high'
-            ? 2000
-            : specificFields.complexity === 'medium'
-              ? 1000
-              : 500,
-        description: `Maintenance cost for ${specificFields.complexity} complexity`,
-      },
-    };
+    const breakdown: CostBreakdown[] = [{
+      costComponentName: 'ATR',
+      amount: operationalCost,
+      description: componentDetails.join(', '),
+      isError: false,
+      errorMessage: '',
+    }];
 
     // Calculate total from breakdown
     const total = this.calculateTotalFromBreakdown(breakdown);
 
     return {
       total,
-      breakdown,
+      breakdown: breakdown,
       period: 'monthly',
     };
   }
