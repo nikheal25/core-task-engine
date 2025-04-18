@@ -15,41 +15,59 @@ export interface ResourceAllocation {
   allocation: number;
 }
 
+export interface AssetComponent {
+  name: string;
+  resourceModel: ResourceAllocation[];
+}
+
 /**
  * Base interface for all asset cost requests
  */
 export interface AssetCostRequest {
-  assetType: string;
+  assetName: string;
+  complexity?: string;
   commonFields: CommonFields;
-  resourceModel: ResourceAllocation[];
+  assetComponents: AssetComponent[];
+  // resourceModel: ResourceAllocation[];
   specificFields: Record<string, any>;
+}
+
+export interface EffortBreakdown {
+  deliveryLocation: string;
+  effortHours: number;
+  effortAmount: number;
+  effortHoursDescription: string;
 }
 
 /**
  * Cost breakdown structure
  */
 export interface CostBreakdown {
-  [category: string]: {
-    amount: number;
-    description: string;
-  };
+  costComponentName: string;
+  amount: number;
+  description: string;
+  isError: boolean;
+  errorMessage?: string;
+  effortHours?: number;
+  effortHoursDescription?: string;
+  effortBreakdown?: EffortBreakdown[];
 }
 
 /**
  * Standard cost response format
  */
 export interface AssetCostResponse {
-  assetType: string;
+  assetName: string;
   buildCost: {
     total: number;
     currency: string;
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
   };
   runCost: {
     total: number;
     currency: string;
     period: 'monthly' | 'yearly';
-    breakdown: CostBreakdown;
+    breakdown: CostBreakdown[];
   };
   estimationDate: Date;
 }
@@ -59,5 +77,5 @@ export interface AssetCostResponse {
  */
 export interface CostCalculator {
   calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse>;
-  getAssetType(): string;
-} 
+  getAssetName(): string;
+}

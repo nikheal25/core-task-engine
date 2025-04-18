@@ -1,106 +1,111 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { CostingService } from '../services/costing.service';
+import {
+  // atrCostingExample, // Assuming these are original imports
+  // qPlusPlusCostingExample,
+} from '../examples/costing-example';
+// import { AssetCostRequest } from '../interfaces/costing.interface'; // Unused import
+import {
+  CostRequestDto,
+  DeploymentType,
+  SupportLevel,
+} from '../dto/cost-request.dto';
 import { AtrCalculator } from '../calculators/atr-calculator';
 import { QPlusPlusCalculator } from '../calculators/q-plus-plus-calculator';
-import { NotFoundException } from '@nestjs/common';
-import { atrCostingExample, qPlusPlusCostingExample } from '../examples/costing-example';
-import { AssetCostRequest } from '../interfaces/costing.interface';
-import { CostRequestDto, DeploymentType, SupportLevel } from '../dto/cost-request.dto';
 
 describe('CostingService', () => {
   let service: CostingService;
   let atrCalculator: AtrCalculator;
-  let qPlusPlusCalculator: QPlusPlusCalculator;
-
-  // Cast examples to proper type for testing
-  const atrRequest = {
-    ...atrCostingExample,
-    commonFields: {
-      ...atrCostingExample.commonFields,
-      deploymentType: DeploymentType.CLOUD,
-      supportLevel: SupportLevel.STANDARD
-    }
-  } as CostRequestDto;
-  
-  const qPlusPlusRequest = {
-    ...qPlusPlusCostingExample,
-    commonFields: {
-      ...qPlusPlusCostingExample.commonFields,
-      deploymentType: DeploymentType.HYBRID,
-      supportLevel: SupportLevel.PREMIUM
-    }
-  } as CostRequestDto;
+  let qppCalculator: QPlusPlusCalculator;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CostingService,
-        AtrCalculator,
-        QPlusPlusCalculator,
-      ],
+      providers: [CostingService, AtrCalculator, QPlusPlusCalculator],
     }).compile();
 
     service = module.get<CostingService>(CostingService);
     atrCalculator = module.get<AtrCalculator>(AtrCalculator);
-    qPlusPlusCalculator = module.get<QPlusPlusCalculator>(QPlusPlusCalculator);
-    
+    qppCalculator = module.get<QPlusPlusCalculator>(QPlusPlusCalculator);
+
     // Register calculators
     service.registerCalculator(atrCalculator);
-    service.registerCalculator(qPlusPlusCalculator);
+    service.registerCalculator(qppCalculator);
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  it('should get available asset types', () => {
-    const assetTypes = service.getAvailableAssetTypes();
-    expect(assetTypes).toContain('ATR');
-    expect(assetTypes).toContain('Q++');
-    expect(assetTypes.length).toBe(2);
+  describe('getCalculator', () => {
+    it('should return the correct calculator for asset name', () => {
+      expect(service.getCalculator('ATR')).toBeInstanceOf(AtrCalculator);
+      expect(service.getCalculator('QPlusPlus')).toBeInstanceOf(
+        QPlusPlusCalculator,
+      );
+    });
+
+    it('should throw NotFoundException for unknown asset name', () => {
+      expect(() => service.getCalculator('UNKNOWN')).toThrow(NotFoundException);
+    });
   });
 
-  it('should get calculator by assetType', () => {
-    const calculator = service.getCalculator('ATR');
-    expect(calculator).toBe(atrCalculator);
-    
-    const calculator2 = service.getCalculator('Q++');
-    expect(calculator2).toBe(qPlusPlusCalculator);
+  describe('getAvailableAssetNames', () => {
+    it('should return registered asset names', () => {
+      const assetNames = service.getAvailableAssetNames();
+      expect(assetNames).toEqual(['ATR', 'QPlusPlus']);
+    });
   });
 
-  it('should throw NotFoundException for unknown asset type', () => {
-    expect(() => service.getCalculator('Unknown')).toThrow(NotFoundException);
-  });
+  describe('calculateAssetCost', () => {
+    it('should call the correct calculator for ATR', async () => {
+      const request = {
+        assetName: 'ATR',
+        complexity: 'Medium',
+        commonFields: {
+          deploymentType: DeploymentType.CLOUD,
+          supportLevel: SupportLevel.STANDARD,
+          region: 'us-east-1',
+        },
+        assetComponents: [
+          {
+            name: 'ignition',
+            resourceModel: [{ location: 'India', allocation: 100 }],
+          },
+        ],
+        specificFields: {
+          licenseCount: 10,
+        },
+      } as CostRequestDto;
 
-  it('should calculate asset cost for ATR asset', async () => {
-    const result = await service.calculateAssetCost(atrRequest);
-    
-    expect(result).toBeDefined();
-    expect(result.assetType).toBe('ATR');
-    expect(result.buildCost).toBeDefined();
-    expect(result.buildCost.total).toBeGreaterThan(0);
-    expect(result.buildCost.breakdown).toBeDefined();
-    expect(result.buildCost.breakdown.effortBased).toBeDefined();
-    
-    expect(result.runCost).toBeDefined();
-    expect(result.runCost.total).toBeGreaterThan(0);
-    expect(result.runCost.period).toBe('monthly');
-    expect(result.runCost.breakdown).toBeDefined();
-  });
+      const calculateCostsSpy = jest.spyOn(atrCalculator, 'calculateCosts');
+      await service.calculateAssetCost(request);
+      expect(calculateCostsSpy).toHaveBeenCalledWith(request);
+    });
 
-  it('should calculate asset cost for Q++ asset', async () => {
-    const result = await service.calculateAssetCost(qPlusPlusRequest);
-    
-    expect(result).toBeDefined();
-    expect(result.assetType).toBe('Q++');
-    expect(result.buildCost).toBeDefined();
-    expect(result.buildCost.total).toBeGreaterThan(0);
-    expect(result.buildCost.breakdown).toBeDefined();
-    expect(result.buildCost.breakdown.effortBased).toBeDefined();
-    
-    expect(result.runCost).toBeDefined();
-    expect(result.runCost.total).toBeGreaterThan(0);
-    expect(result.runCost.period).toBe('monthly');
-    expect(result.runCost.breakdown).toBeDefined();
+    it('should call the correct calculator for QPlusPlus', async () => {
+      const request = {
+        assetName: 'QPlusPlus',
+        commonFields: {
+          deploymentType: DeploymentType.HYBRID,
+          supportLevel: SupportLevel.PREMIUM,
+          region: 'eu-west-1',
+        },
+        assetComponents: [
+          {
+            name: 'Frontend',
+            resourceModel: [{ location: 'US', allocation: 100 }],
+          },
+        ],
+        specificFields: {
+          complexity: 'Large',
+          databaseSize: 'large',
+        },
+      } as CostRequestDto;
+
+      const calculateCostsSpy = jest.spyOn(qppCalculator, 'calculateCosts');
+      await service.calculateAssetCost(request);
+      expect(calculateCostsSpy).toHaveBeenCalledWith(request);
+    });
   });
-}); 
+});

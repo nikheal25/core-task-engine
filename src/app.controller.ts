@@ -13,8 +13,8 @@ export class AppController {
 
   @Get()
   @ApiOperation({ summary: 'Get hello message' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Returns a hello message',
     type: HelloResponseDto,
   })
@@ -25,8 +25,8 @@ export class AppController {
 
   @Get('health')
   @ApiOperation({ summary: 'Health check endpoint' })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Health check response',
     type: HealthCheckResponseDto,
   })

@@ -1,16 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CostBreakdown } from '../interfaces/costing.interface';
+// import { CostBreakdown } from '../interfaces/costing.interface'; // Unused import
 
 export class CostBreakdownItemDto {
   @ApiProperty({
     description: 'Cost amount',
-    example: 10000
+    example: 10000,
   })
   amount: number;
 
   @ApiProperty({
     description: 'Description of the cost item',
-    example: 'Base platform setup'
+    example: 'Base platform setup',
   })
   description: string;
 }
@@ -18,13 +18,13 @@ export class CostBreakdownItemDto {
 export class CostCategoryDto {
   @ApiProperty({
     description: 'Total cost',
-    example: 25000
+    example: 25000,
   })
   total: number;
 
   @ApiProperty({
     description: 'Currency code',
-    example: 'USD'
+    example: 'USD',
   })
   currency: string;
 
@@ -35,9 +35,9 @@ export class CostCategoryDto {
       type: 'object',
       properties: {
         amount: { type: 'number' },
-        description: { type: 'string' }
-      }
-    }
+        description: { type: 'string' },
+      },
+    },
   })
   breakdown: Record<string, CostBreakdownItemDto>;
 }
@@ -46,33 +46,33 @@ export class RunCostDto extends CostCategoryDto {
   @ApiProperty({
     description: 'Frequency of the recurring costs',
     enum: ['monthly', 'yearly'],
-    example: 'monthly'
+    example: 'monthly',
   })
   period: 'monthly' | 'yearly';
 }
 
 export class AssetCostResponseDto {
   @ApiProperty({
-    description: 'Type of asset',
-    example: 'ATR'
+    description: 'Name of asset',
+    example: 'ATR',
   })
-  assetType: string;
+  assetName: string;
 
   @ApiProperty({
     description: 'One-time build costs',
-    type: CostCategoryDto
+    type: CostCategoryDto,
   })
   buildCost: CostCategoryDto;
 
   @ApiProperty({
     description: 'Recurring run costs',
-    type: RunCostDto
+    type: RunCostDto,
   })
   runCost: RunCostDto;
 
   @ApiProperty({
     description: 'Date when the cost estimation was calculated',
-    type: Date
+    type: Date,
   })
   estimationDate: Date;
-} 
+}

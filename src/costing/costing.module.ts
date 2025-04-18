@@ -6,11 +6,7 @@ import { QPlusPlusCalculator } from './calculators/q-plus-plus-calculator';
 
 @Module({
   controllers: [CostingController],
-  providers: [
-    CostingService,
-    AtrCalculator,
-    QPlusPlusCalculator,
-  ],
+  providers: [CostingService, AtrCalculator, QPlusPlusCalculator],
   exports: [CostingService],
 })
 export class CostingModule implements OnModuleInit {
@@ -25,4 +21,4 @@ export class CostingModule implements OnModuleInit {
     this.costingService.registerCalculator(this.atrCalculator);
     this.costingService.registerCalculator(this.qPlusPlusCalculator);
   }
-} 
+}

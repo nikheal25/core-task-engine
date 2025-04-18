@@ -14,10 +14,11 @@ async function bootstrap() {
   });
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
-  
+
   // Swagger setup
-  const swaggerEnabled = configService.get<string>('SWAGGER_ENABLED', 'true') === 'true';
-  
+  const swaggerEnabled =
+    configService.get<string>('SWAGGER_ENABLED', 'true') === 'true';
+
   if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('Core Task Engine API')
@@ -35,7 +36,7 @@ async function bootstrap() {
         'access-token',
       )
       .build();
-    
+
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, document, {
       swaggerOptions: {
@@ -43,11 +44,13 @@ async function bootstrap() {
       },
     });
   }
-  
+
   await app.listen(port);
   console.log(`Application is running on: ${await app.getUrl()}`);
   if (swaggerEnabled) {
-    console.log(`Swagger documentation is available at: ${await app.getUrl()}/api/docs`);
+    console.log(
+      `Swagger documentation is available at: ${await app.getUrl()}/api/docs`,
+    );
   }
 }
-bootstrap();
+bootstrap().catch((err) => console.error('Bootstrap error:', err));

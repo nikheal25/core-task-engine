@@ -34,24 +34,43 @@ The costing system is designed to calculate build and run costs for various comp
 
 ## Resource Model
 
-The resource model follows a location-based allocation approach:
+The resource model follows a component-based approach with location-based allocations:
 
 ```json
-"resourceModel": [
+"assetComponents": [
   {
-    "location": "US",
-    "allocation": 60
+    "name": "Frontend",
+    "resourceModel": [
+      {
+        "location": "US",
+        "allocation": 60
+      },
+      {
+        "location": "EU",
+        "allocation": 40
+      }
+    ]
   },
   {
-    "location": "EU",
-    "allocation": 40
+    "name": "Backend",
+    "resourceModel": [
+      {
+        "location": "US",
+        "allocation": 70
+      },
+      {
+        "location": "APAC",
+        "allocation": 30
+      }
+    ]
   }
 ]
 ```
 
 Key characteristics:
-- Each location has an allocation percentage
-- Allocations must total 100%
+- Assets are broken down into components (e.g., Frontend, Backend)
+- Each component has a resource model with location allocations
+- For each component, allocations must total 100%
 - Different locations have different cost rates
 
 ## Common Fields
@@ -61,7 +80,7 @@ All assets share common fields that affect their pricing:
 ```json
 "commonFields": {
   "deploymentType": "cloud",
-  "region": "us-east-1",
+  "region": "americas",
   "supportLevel": "standard"
 }
 ```
@@ -108,17 +127,22 @@ The system is designed to be easily extended with new asset types. For detailed 
   "assetType": "ATR",
   "commonFields": {
     "deploymentType": "cloud",
-    "region": "us-east-1",
+    "region": "americas",
     "supportLevel": "standard"
   },
-  "resourceModel": [
+  "assetComponents": [
     {
-      "location": "US",
-      "allocation": 60
-    },
-    {
-      "location": "EU",
-      "allocation": 40
+      "name": "Main Component",
+      "resourceModel": [
+        {
+          "location": "US",
+          "allocation": 60
+        },
+        {
+          "location": "EU",
+          "allocation": 40
+        }
+      ]
     }
   ],
   "specificFields": {
