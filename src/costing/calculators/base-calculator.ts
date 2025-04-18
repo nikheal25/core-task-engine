@@ -1,17 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common';
+// import { BadRequestException } from '@nestjs/common'; // Unused import
 import {
   AssetCostRequest,
   AssetCostResponse,
   CostBreakdown,
   CostCalculator,
-  ResourceAllocation,
+  // ResourceAllocation, // Unused import
   AssetComponent,
   EffortBreakdown,
 } from '../interfaces/costing.interface';
 
 // Define valid complexity levels as string literal union type
-export type ComplexityLevel = 'xSmall' | 'Small' | 'Medium' | 'Large' | 'xLarge';
+export type ComplexityLevel =
+  | 'xSmall'
+  | 'Small'
+  | 'Medium'
+  | 'Large'
+  | 'xLarge';
 
 /**
  * Base calculator providing common costing functionality for all asset calculators
@@ -28,7 +33,7 @@ export abstract class BaseCalculator implements CostCalculator {
    * Location-based rates lookup
    * To be overridden by each asset-specific calculator
    */
-  // protected abstract getLocationRates(): Record<string, number>; 
+  // protected abstract getLocationRates(): Record<string, number>;
 
   /**
    * Validates if the submitted asset components are valid for this asset type
@@ -58,17 +63,19 @@ export abstract class BaseCalculator implements CostCalculator {
       }
 
       if (!component.resourceModel || component.resourceModel.length === 0) {
-        errors.push(`Component ${component.name || 'unnamed'} has no resource allocation`);
+        errors.push(
+          `Component ${component.name || 'unnamed'} has no resource allocation`,
+        );
       } else {
         // Check that allocations sum to 100%
         const totalAllocation = component.resourceModel.reduce(
           (sum, resource) => sum + resource.allocation,
-          0
+          0,
         );
 
         if (Math.abs(totalAllocation - 100) > 0.01) {
           errors.push(
-            `Component ${component.name} resource allocations should sum to 100% (currently ${totalAllocation}%)`
+            `Component ${component.name} resource allocations should sum to 100% (currently ${totalAllocation}%)`,
           );
         }
       }
@@ -104,26 +111,29 @@ export abstract class BaseCalculator implements CostCalculator {
     component: AssetComponent,
     complexity: ComplexityLevel,
     blendRates: Record<string, Record<ComplexityLevel, number>>,
-    effortHours: Record<string, number>
+    effortHours: Record<string, number>,
   ): CostBreakdown {
     let totalAmount = 0;
     const effortBreakdown: EffortBreakdown[] = [];
     let totalEffortHours = 0;
 
-    for (const {allocation, location} of component.resourceModel) {
+    for (const { allocation, location } of component.resourceModel) {
       // Get blend rate for this location and complexity
       const blendRate = blendRates[location]?.[complexity];
 
       if (!blendRate) {
-        throw new Error(`Blend rate not found for location "${location}" at complexity "${complexity}"`);
+        throw new Error(
+          `Blend rate not found for location "${location}" at complexity "${complexity}"`,
+        );
       }
 
       const workingHours = this.getWorkingHoursPerLocation(location);
 
-      const effortsHrForLocation = (allocation/100) * workingHours * effortHours[location];
+      const effortsHrForLocation =
+        (allocation / 100) * workingHours * effortHours[location];
 
       const amount = Number((effortsHrForLocation * blendRate).toFixed(2)); // * important: round to 2 decimal places
-      
+
       totalAmount += amount;
       totalEffortHours += effortsHrForLocation;
 
@@ -169,7 +179,7 @@ export abstract class BaseCalculator implements CostCalculator {
    * To be implemented by subclasses
    */
   protected abstract calculateBuildCost(
-    request: AssetCostRequest
+    request: AssetCostRequest,
   ): Promise<{ total: number; breakdown: CostBreakdown[] }>;
 
   /**
@@ -177,7 +187,7 @@ export abstract class BaseCalculator implements CostCalculator {
    * To be implemented by subclasses
    */
   protected abstract calculateRunCost(
-    request: AssetCostRequest
+    request: AssetCostRequest,
   ): Promise<{
     total: number;
     breakdown: CostBreakdown[];
@@ -188,11 +198,13 @@ export abstract class BaseCalculator implements CostCalculator {
    * Main method to calculate asset costs
    * Orchestrates the process and formats the response
    */
-  public async calculateCosts(request: AssetCostRequest): Promise<AssetCostResponse> {
+  public async calculateCosts(
+    request: AssetCostRequest,
+  ): Promise<AssetCostResponse> {
     // Validate the request
     if (request.assetName !== this.assetName) {
       throw new Error(
-        `Invalid asset name: ${request.assetName}. This calculator supports: ${this.assetName}`
+        `Invalid asset name: ${request.assetName}. This calculator supports: ${this.assetName}`,
       );
     }
 

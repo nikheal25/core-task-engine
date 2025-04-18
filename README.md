@@ -19,7 +19,7 @@ Core Task Engine is a microservices-based application built with NestJS that pro
 ### Prerequisites
 
 - Node.js (v18+)
-- npm/pnpm
+- pnpm (v10+ recommended)
 - Git
 
 ### Installation
@@ -53,6 +53,13 @@ Swagger UI is available when running the application:
 http://localhost:3000/api/docs
 ```
 
+## Linting and Formatting
+
+This project uses ESLint with the Airbnb style guide and Prettier for code formatting. Ensure your code adheres to these standards before committing.
+
+- To format the code: `pnpm format`
+- To lint the code and fix automatically fixable issues: `pnpm lint`
+
 ## Costing API
 
 ### Calculating Asset Costs
@@ -63,30 +70,51 @@ To calculate costs for an asset, send a POST request to the `/costing` endpoint:
 curl -X POST http://localhost:3000/costing \
   -H "Content-Type: application/json" \
   -d '{
-    "assetType": "ATR",
+    "assetName": "ATR",
+    "complexity": "Medium",
     "commonFields": {
       "deploymentType": "cloud",
       "supportLevel": "standard"
     },
     "assetComponents": [
       {
-        "name": "Main Component",
+        "name": "ignition",
         "resourceModel": [
           {
-            "location": "US",
-            "allocation": 60
+            "location": "India",
+            "allocation": 90
           },
           {
-            "location": "EU",
-            "allocation": 40
+            "location": "Australia",
+            "allocation": 10
+          }
+        ]
+      },
+      {
+        "name": "automation configuration",
+        "resourceModel": [
+          {
+            "location": "India",
+            "allocation": 90
+          },
+          {
+            "location": "Australia",
+            "allocation": 10
           }
         ]
       }
     ],
     "specificFields": {
-      "complexity": "medium",
       "licenseCount": 25,
       "hasCustomComponents": true
     }
   }'
+```
+
+### Getting Available Asset Names
+
+To get a list of asset names supported by the calculator, send a GET request to the `/costing/asset-names` endpoint:
+
+```bash
+curl http://localhost:3000/costing/asset-names
 ```

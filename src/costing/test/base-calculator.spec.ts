@@ -3,7 +3,7 @@ import {
   CostBreakdown,
   AssetComponent,
 } from '../interfaces/costing.interface';
-import { BaseCalculator, ComplexityLevel } from '../calculators/base-calculator';
+import { BaseCalculator } from '../calculators/base-calculator';
 
 // Create a concrete implementation of BaseCalculator for testing
 class TestCalculator extends BaseCalculator {
@@ -24,20 +24,20 @@ class TestCalculator extends BaseCalculator {
     // Simple implementation for tests
     let amount = 0;
     const description: string[] = [];
-    
+
     for (const resource of component.resourceModel) {
       let rate = this.getLocationRates()[resource.location];
       if (!rate) {
         rate = 10000; // Default rate
       }
-      
+
       const allocation = resource.allocation / 100;
       const resourceAmount = rate * allocation;
       amount += resourceAmount;
-      
+
       description.push(`${resource.location} (${resource.allocation}%)`);
     }
-    
+
     return {
       costComponentName: component.name,
       amount,
@@ -49,8 +49,8 @@ class TestCalculator extends BaseCalculator {
 
   // Implementation of deployment type multiplier
   protected getDeploymentTypeMultiplier(request: AssetCostRequest): number {
-    const deploymentType = request.commonFields.deploymentType;
-    
+    const { deploymentType } = request.commonFields;
+
     switch (deploymentType) {
       case 'onPremise':
         return 1.2;
@@ -68,7 +68,7 @@ class TestCalculator extends BaseCalculator {
   // Implementation of support level multiplier
   protected getSupportLevelMultiplier(request: AssetCostRequest): number {
     const supportLevel = request.commonFields.supportLevel || 'standard';
-    
+
     switch (supportLevel) {
       case 'basic':
         return 1.0;
@@ -81,13 +81,13 @@ class TestCalculator extends BaseCalculator {
     }
   }
 
-  protected async calculateBuildCost(
-    request: AssetCostRequest
+  protected calculateBuildCost(
+    request: AssetCostRequest,
   ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
     // Calculate effort-based costs for each component
-    const componentBreakdowns: CostBreakdown[] = request.assetComponents.map((component) => {
-      return this.calculateEffortBasedBuildCost(component);
-    });
+    const componentBreakdowns: CostBreakdown[] = request.assetComponents.map(
+      (component) => this.calculateEffortBasedBuildCost(component),
+    );
 
     // Add base cost
     componentBreakdowns.push({
@@ -98,23 +98,27 @@ class TestCalculator extends BaseCalculator {
     });
 
     const total = this.calculateTotalFromBreakdown(componentBreakdowns);
-    return { total, breakdown: componentBreakdowns };
+    return Promise.resolve({ total, breakdown: componentBreakdowns });
   }
 
-  protected async calculateRunCost(
-    request: AssetCostRequest
-  ): Promise<{ total: number; breakdown: CostBreakdown[]; period: 'monthly' | 'yearly' }> {
+  protected calculateRunCost(
+    _request: AssetCostRequest, // Mark request as unused
+  ): Promise<{
+    total: number;
+    breakdown: CostBreakdown[];
+    period: 'monthly' | 'yearly';
+  }> {
     const breakdown: CostBreakdown[] = [
       {
         costComponentName: 'Support',
         amount: 1000,
         description: 'Support cost',
         isError: false,
-      }
+      },
     ];
 
     const total = this.calculateTotalFromBreakdown(breakdown);
-    return { total, breakdown, period: 'monthly' };
+    return Promise.resolve({ total, breakdown, period: 'monthly' });
   }
 
   // Expose protected methods for testing
@@ -139,10 +143,11 @@ class TestCalculator extends BaseCalculator {
   }
 
   // Keep this for backward compatibility
-  public testValidateResourceModelAllocations(resourceModel: any) {
+  public testValidateResourceModelAllocations(resourceModel: unknown) {
+    // Add type assertion
     const component = {
       name: 'Test Component',
-      resourceModel: resourceModel
+      resourceModel: resourceModel as any, // Using any here for simplicity in test, consider defining a type if needed
     };
     return this.validateComponents([component]);
   }
@@ -181,7 +186,9 @@ describe('BaseCalculator', () => {
       specificFields: {},
     } as AssetCostRequest;
 
-    const result = calculator.testCalculateEffortBasedBuildCost(request.assetComponents[0]);
+    const result = calculator.testCalculateEffortBasedBuildCost(
+      request.assetComponents[0],
+    );
 
     // 15000 * 0.5 + 18000 * 0.5 = 16500
     expect(result.amount).toBe(16500);

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AssetCostRequest,
   CostBreakdown,
-  AssetComponent
+  AssetComponent,
 } from '../interfaces/costing.interface';
 import { BaseCalculator, ComplexityLevel } from './base-calculator';
 
@@ -20,14 +20,14 @@ export class AtrCalculator extends BaseCalculator {
         Small: 14,
         Medium: 15,
         Large: 16,
-        xLarge: 17
+        xLarge: 17,
       },
       Australia: {
         xSmall: 48,
         Small: 49,
         Medium: 52,
         Large: 53,
-        xLarge: 55
+        xLarge: 55,
       },
     };
   }
@@ -38,16 +38,22 @@ export class AtrCalculator extends BaseCalculator {
    * @param complexity - The complexity level (must be a valid ComplexityLevel)
    * @throws Error if hours are not found for the component and complexity
    */
-  protected getEffortHours(component: string, complexity: ComplexityLevel): Record<string, number> {
+  protected getEffortHours(
+    component: string,
+    complexity: ComplexityLevel,
+  ): Record<string, number> {
     // Define effort hours by component, complexity, and location
     // These are example values and would typically come from a database
-    const effortHoursByComponent: Record<string, Record<ComplexityLevel, Record<string, number>>> = {
-      'ignition': {
+    const effortHoursByComponent: Record<
+      string,
+      Record<ComplexityLevel, Record<string, number>>
+    > = {
+      ignition: {
         xSmall: { Australia: 19.39, India: 21.14 },
-        Small: {  Australia: 21.34, India: 23.1 },
-        Medium: {  Australia: 31.25, India: 32.8 },
-        Large: {  Australia: 41.20, India: 42.6 },
-        xLarge: {  Australia: 50.91, India: 52.47 },
+        Small: { Australia: 21.34, India: 23.1 },
+        Medium: { Australia: 31.25, India: 32.8 },
+        Large: { Australia: 41.2, India: 42.6 },
+        xLarge: { Australia: 50.91, India: 52.47 },
       },
       'automation configuration': {
         xSmall: { Australia: 21.35, India: 10 },
@@ -67,7 +73,9 @@ export class AtrCalculator extends BaseCalculator {
     // Get hours for this complexity
     const complexityHours = componentHours[complexity];
     if (!complexityHours) {
-      throw new Error(`Effort hours not found for component: ${component}, complexity: ${complexity}`);
+      throw new Error(
+        `Effort hours not found for component: ${component}, complexity: ${complexity}`,
+      );
     }
 
     return complexityHours;
@@ -79,26 +87,27 @@ export class AtrCalculator extends BaseCalculator {
    * @param complexity - The complexity level (must be a valid ComplexityLevel)
    */
   protected calculateEffortBasedCosts(
-    component: AssetComponent, 
-    complexity: ComplexityLevel
+    component: AssetComponent,
+    complexity: ComplexityLevel,
   ): CostBreakdown {
     try {
       const blendRates = this.getBlendRates();
       const effortHours = this.getEffortHours(component.name, complexity);
-      
+
       return this.calculateEffortBasedComponentCost(
         component,
         complexity,
         blendRates,
-        effortHours
+        effortHours,
       );
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       return {
         costComponentName: component.name,
         amount: 0,
         description: `Error calculating costs for ${component.name}`,
         isError: true,
-        errorMessage: error.message,
+        errorMessage: message,
       };
     }
   }
@@ -106,27 +115,40 @@ export class AtrCalculator extends BaseCalculator {
   /**
    * Calculate build cost for ATR
    */
-  protected async calculateBuildCost(
-    request: AssetCostRequest
+  protected calculateBuildCost(
+    request: AssetCostRequest,
   ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
     const components = request.assetComponents;
-    const complexity = request.complexity as ComplexityLevel;
-    
+    const { complexity } = request;
+
     // Validate that complexity is provided for ATR
     if (!complexity) {
       throw new Error('Complexity is mandatory for ATR cost calculation');
     }
-    
+
     // Check if complexity is a valid ComplexityLevel
-    const validComplexities: ComplexityLevel[] = ['xSmall', 'Small', 'Medium', 'Large', 'xLarge'];
-    if (!validComplexities.includes(complexity)) {
-      throw new Error(`Invalid complexity: ${complexity}. Must be one of: ${validComplexities.join(', ')}`);
+    const validComplexities: ComplexityLevel[] = [
+      'xSmall',
+      'Small',
+      'Medium',
+      'Large',
+      'xLarge',
+    ];
+    if (!validComplexities.includes(complexity as ComplexityLevel)) {
+      throw new Error(
+        `Invalid complexity: ${complexity}. Must be one of: ${validComplexities.join(
+          ', ',
+        )}`,
+      );
     }
 
     // Calculate cost for each component
     const breakdown: CostBreakdown[] = [];
     for (const component of components) {
-      const componentCost = this.calculateEffortBasedCosts(component, complexity);
+      const componentCost = this.calculateEffortBasedCosts(
+        component,
+        complexity as ComplexityLevel,
+      );
       breakdown.push(componentCost);
     }
 
@@ -135,28 +157,30 @@ export class AtrCalculator extends BaseCalculator {
     // Calculate total
     const total = this.calculateTotalFromBreakdown(breakdown);
 
-    return {
-      total,
-      breakdown,
-    };
+    return Promise.resolve({ total, breakdown }); // Wrap in Promise.resolve
   }
 
   /**
    * Calculate run cost for ATR
    */
-  protected async calculateRunCost(
-    request: AssetCostRequest
-  ): Promise<{ total: number; breakdown: CostBreakdown[]; period: 'monthly' | 'yearly' }> {
-    const components = request.assetComponents;
+  protected calculateRunCost(
+    request: AssetCostRequest,
+  ): Promise<{
+    total: number;
+    breakdown: CostBreakdown[];
+    period: 'monthly' | 'yearly';
+  }> {
     const licenseCount = request.specificFields?.licenseCount as number;
-    
+
     if (!licenseCount || licenseCount < 1) {
-      throw new Error('License count must be specified and at least 1 for ATR run cost calculation');
+      throw new Error(
+        'License count must be specified and at least 1 for ATR run cost calculation',
+      );
     }
 
     const baseMonthlyLicense = 500; // Base monthly license cost per instance
     const breakdown: CostBreakdown[] = [];
-    
+
     // Calculate license costs
     const licenseCost = baseMonthlyLicense * licenseCount;
     breakdown.push({
@@ -166,11 +190,10 @@ export class AtrCalculator extends BaseCalculator {
       isError: false,
     });
 
-   
     // Add support costs based on support level
     const supportLevel = request.commonFields.supportLevel || 'standard';
     let supportCost = 0;
-    
+
     switch (supportLevel) {
       case 'basic':
         supportCost = 100 * licenseCount;
@@ -184,7 +207,7 @@ export class AtrCalculator extends BaseCalculator {
       default:
         supportCost = 250 * licenseCount;
     }
-    
+
     breakdown.push({
       costComponentName: 'Support',
       amount: supportCost,
@@ -205,11 +228,11 @@ export class AtrCalculator extends BaseCalculator {
 
     // Calculate total monthly cost
     const total = this.calculateTotalFromBreakdown(breakdown);
-    
-    return {
+
+    return Promise.resolve({
       total,
       breakdown,
       period: 'monthly',
-    };
+    }); // Wrap in Promise.resolve
   }
 }

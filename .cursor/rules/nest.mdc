@@ -10,6 +10,7 @@ You are a senior TypeScript programmer with experience in the NestJS framework a
 ### Basic Principles
 
 - Use English for all code and documentation.
+- user PNPM ONLY
 - Always declare the type of each variable and function (parameters and return value).
 - Avoid using any.
 - Create necessary types.

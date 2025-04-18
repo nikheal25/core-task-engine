@@ -144,7 +144,7 @@ export class CostRequestDto {
     type: [AssetComponentDto],
     example: [
       {
-        name: 'Ignition',
+        name: 'ignition',
         resourceModel: [
           {
             location: 'India',
@@ -157,17 +157,17 @@ export class CostRequestDto {
         ],
       },
       {
-        "name": "automation configuration",
-        "resourceModel": [
+        name: 'automation configuration',
+        resourceModel: [
           {
-            "location": "India",
-            "allocation": 90
+            location: 'India',
+            allocation: 90,
           },
           {
-            "location": "Australia",
-            "allocation": 10
-          }
-        ]
+            location: 'Australia',
+            allocation: 10,
+          },
+        ],
       },
     ],
   })
@@ -178,11 +178,12 @@ export class CostRequestDto {
   assetComponents: AssetComponentDto[];
 
   @ApiProperty({
-    description: 'Asset-specific fields required for cost calculation. For run cost calculation, licenseCount is required.',
+    description:
+      'Asset-specific fields required for cost calculation. For run cost calculation, licenseCount is required.',
     example: {
       licenseCount: 25,
       hasCustomComponents: true,
-    }
+    },
   })
   @IsObject()
   specificFields: Record<string, any>;

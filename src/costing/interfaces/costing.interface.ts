@@ -43,14 +43,14 @@ export interface EffortBreakdown {
  * Cost breakdown structure
  */
 export interface CostBreakdown {
-    costComponentName: string;
-    amount: number;
-    description: string;
-    isError: boolean;
-    errorMessage?: string;
-    effortHours?: number;
-    effortHoursDescription?: string;
-    effortBreakdown?: EffortBreakdown[];
+  costComponentName: string;
+  amount: number;
+  description: string;
+  isError: boolean;
+  errorMessage?: string;
+  effortHours?: number;
+  effortHoursDescription?: string;
+  effortBreakdown?: EffortBreakdown[];
 }
 
 /**
