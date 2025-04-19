@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   AssetCostRequest,
   CostBreakdown,
@@ -8,6 +8,9 @@ import { BaseCalculator, ComplexityLevel } from './base-calculator';
 
 @Injectable()
 export class AtrCalculator extends BaseCalculator {
+  // Initialize logger for this specific calculator
+  protected readonly logger = new Logger(AtrCalculator.name);
+
   protected assetName = 'ATR';
 
   /**
@@ -42,6 +45,9 @@ export class AtrCalculator extends BaseCalculator {
     component: string,
     complexity: ComplexityLevel,
   ): Record<string, number> {
+    this.logger.debug(
+      `Getting effort hours for component: ${component}, complexity: ${complexity}`,
+    );
     // Define effort hours by component, complexity, and location
     // These are example values and would typically come from a database
     const effortHoursByComponent: Record<
@@ -67,17 +73,22 @@ export class AtrCalculator extends BaseCalculator {
     // Get hours for this component
     const componentHours = effortHoursByComponent[component];
     if (!componentHours) {
-      throw new Error(`Effort hours not found for component: ${component}`);
+      const errorMsg = `Effort hours not found for component: ${component}`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Get hours for this complexity
     const complexityHours = componentHours[complexity];
     if (!complexityHours) {
-      throw new Error(
-        `Effort hours not found for component: ${component}, complexity: ${complexity}`,
-      );
+      const errorMsg = `Effort hours not found for component: ${component}, complexity: ${complexity}`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
+    this.logger.debug(
+      `Found effort hours for ${component} (${complexity}): ${JSON.stringify(complexityHours)}`,
+    );
     return complexityHours;
   }
 
@@ -90,6 +101,9 @@ export class AtrCalculator extends BaseCalculator {
     component: AssetComponent,
     complexity: ComplexityLevel,
   ): CostBreakdown {
+    this.logger.debug(
+      `Calculating effort-based costs for ATR component: ${component.name}`,
+    );
     try {
       const blendRates = this.getBlendRates();
       const effortHours = this.getEffortHours(component.name, complexity);
@@ -102,6 +116,11 @@ export class AtrCalculator extends BaseCalculator {
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Error in calculateEffortBasedCosts for ${component.name}: ${message}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      // Create error breakdown item
       return {
         costComponentName: component.name,
         amount: 0,
@@ -118,12 +137,17 @@ export class AtrCalculator extends BaseCalculator {
   protected calculateBuildCost(
     request: AssetCostRequest,
   ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
+    this.logger.log(
+      `Calculating ATR build cost for asset: ${request.assetName}`,
+    );
     const components = request.assetComponents;
     const { complexity } = request;
 
     // Validate that complexity is provided for ATR
     if (!complexity) {
-      throw new Error('Complexity is mandatory for ATR cost calculation');
+      const errorMsg = 'Complexity is mandatory for ATR cost calculation';
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Check if complexity is a valid ComplexityLevel
@@ -135,14 +159,14 @@ export class AtrCalculator extends BaseCalculator {
       'xLarge',
     ];
     if (!validComplexities.includes(complexity as ComplexityLevel)) {
-      throw new Error(
-        `Invalid complexity: ${complexity}. Must be one of: ${validComplexities.join(
-          ', ',
-        )}`,
-      );
+      const errorMsg = `Invalid complexity: ${complexity}. Must be one of: ${validComplexities.join(', ')}`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
+    this.logger.debug(`Validated complexity for ATR build cost: ${complexity}`);
 
     // Calculate cost for each component
+    this.logger.debug('Calculating cost for each ATR component...');
     const breakdown: CostBreakdown[] = [];
     for (const component of components) {
       const componentCost = this.calculateEffortBasedCosts(
@@ -151,11 +175,13 @@ export class AtrCalculator extends BaseCalculator {
       );
       breakdown.push(componentCost);
     }
+    this.logger.debug('Finished calculating component costs.');
 
-    // TODO: add cost for Use-cases
+    // TODO: add cost for Use-cases (Add logging here when implemented)
 
     // Calculate total
     const total = this.calculateTotalFromBreakdown(breakdown);
+    this.logger.log(`ATR build cost calculated: ${total}`);
 
     return Promise.resolve({ total, breakdown }); // Wrap in Promise.resolve
   }
@@ -163,26 +189,30 @@ export class AtrCalculator extends BaseCalculator {
   /**
    * Calculate run cost for ATR
    */
-  protected calculateRunCost(
-    request: AssetCostRequest,
-  ): Promise<{
+  protected calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }> {
+    this.logger.log(`Calculating ATR run cost for asset: ${request.assetName}`);
     const licenseCount = request.specificFields?.licenseCount as number;
 
     if (!licenseCount || licenseCount < 1) {
-      throw new Error(
-        'License count must be specified and at least 1 for ATR run cost calculation',
-      );
+      const errorMsg =
+        'License count must be specified and at least 1 for ATR run cost calculation';
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
+    this.logger.debug(
+      `Validated license count for ATR run cost: ${licenseCount}`,
+    );
 
     const baseMonthlyLicense = 500; // Base monthly license cost per instance
     const breakdown: CostBreakdown[] = [];
 
     // Calculate license costs
     const licenseCost = baseMonthlyLicense * licenseCount;
+    this.logger.debug(`Calculated license cost: ${licenseCost}`);
     breakdown.push({
       costComponentName: 'License Fees',
       amount: licenseCost,
@@ -193,6 +223,7 @@ export class AtrCalculator extends BaseCalculator {
     // Add support costs based on support level
     const supportLevel = request.commonFields.supportLevel || 'standard';
     let supportCost = 0;
+    this.logger.debug(`Calculating support cost for level: ${supportLevel}`);
 
     switch (supportLevel) {
       case 'basic':
@@ -205,8 +236,12 @@ export class AtrCalculator extends BaseCalculator {
         supportCost = 500 * licenseCount;
         break;
       default:
+        this.logger.warn(
+          `Using default support cost calculation for level: ${supportLevel}`,
+        );
         supportCost = 250 * licenseCount;
     }
+    this.logger.debug(`Calculated support cost: ${supportCost}`);
 
     breakdown.push({
       costComponentName: 'Support',
@@ -217,17 +252,24 @@ export class AtrCalculator extends BaseCalculator {
 
     // Calculate infrastructure costs if applicable
     if (request.commonFields.deploymentType === 'cloud') {
+      this.logger.debug('Calculating cloud infrastructure cost...');
       const cloudCost = 200 * licenseCount;
+      this.logger.debug(`Calculated cloud cost: ${cloudCost}`);
       breakdown.push({
         costComponentName: 'Cloud Infrastructure',
         amount: cloudCost,
         description: `Cloud hosting for ${licenseCount} instance(s)`,
         isError: false,
       });
+    } else {
+      this.logger.debug(
+        'Skipping cloud infrastructure cost (not cloud deployment).',
+      );
     }
 
     // Calculate total monthly cost
     const total = this.calculateTotalFromBreakdown(breakdown);
+    this.logger.log(`ATR run cost calculated: ${total} (monthly)`);
 
     return Promise.resolve({
       total,

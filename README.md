@@ -43,15 +43,13 @@ pnpm run start:dev
 pnpm run start:prod
 ```
 
-The application will be available at `http://localhost:3000` (or the port defined in your environment variables).
+The application will be available at `http://localhost:3005` (or the port defined in your environment variables).
 
 ### API Documentation
 
 Swagger UI is available when running the application:
 
-```
-http://localhost:3000/api/docs
-```
+<http://localhost:3005/api/docs>
 
 ## Linting and Formatting
 
@@ -64,7 +62,7 @@ This project uses ESLint and Prettier to enforce code style and quality. See the
 To calculate costs for an asset, send a POST request to the `/costing` endpoint:
 
 ```bash
-curl -X POST http://localhost:3000/costing \
+curl -X POST http://localhost:3005/costing \
   -H "Content-Type: application/json" \
   -d '{
     "assetName": "ATR",
@@ -113,5 +111,5 @@ curl -X POST http://localhost:3000/costing \
 To get a list of asset names supported by the calculator, send a GET request to the `/costing/asset-names` endpoint:
 
 ```bash
-curl http://localhost:3000/costing/asset-names
+curl http://localhost:3005/costing/asset-names
 ```

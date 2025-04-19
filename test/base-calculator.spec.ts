@@ -2,8 +2,8 @@ import {
   AssetCostRequest,
   CostBreakdown,
   AssetComponent,
-} from '../interfaces/costing.interface';
-import { BaseCalculator } from '../calculators/base-calculator';
+} from '../src/costing/interfaces/costing.interface';
+import { BaseCalculator } from '../src/costing/calculators/base-calculator';
 
 // Create a concrete implementation of BaseCalculator for testing
 class TestCalculator extends BaseCalculator {
@@ -20,7 +20,9 @@ class TestCalculator extends BaseCalculator {
 
   // Helper method to calculate effort-based build cost for a component
   // This is for backward compatibility
-  private calculateEffortBasedBuildCost(component: AssetComponent): CostBreakdown {
+  private calculateEffortBasedBuildCost(
+    component: AssetComponent,
+  ): CostBreakdown {
     // Simple implementation for tests
     let amount = 0;
     const description: string[] = [];
