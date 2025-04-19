@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 // import { BadRequestException } from '@nestjs/common'; // Unused import
 import {
   AssetCostRequest,
@@ -23,6 +23,9 @@ export type ComplexityLevel =
  */
 @Injectable()
 export abstract class BaseCalculator implements CostCalculator {
+  // Logger to be initialized by subclasses
+  protected abstract readonly logger: Logger;
+
   /**
    * The asset name that this calculator supports
    * To be overridden by subclasses
@@ -41,10 +44,12 @@ export abstract class BaseCalculator implements CostCalculator {
    * @returns an array of validation errors, empty if all valid
    */
   protected validateComponents(components: AssetComponent[]): string[] {
+    this.logger.debug('Validating asset components...');
     const errors: string[] = [];
 
     if (!components || components.length === 0) {
       errors.push('No components specified');
+      this.logger.warn('Validation failed: No components specified.');
       return errors;
     }
 
@@ -53,18 +58,27 @@ export abstract class BaseCalculator implements CostCalculator {
     const uniqueNames = new Set(names);
 
     if (uniqueNames.size !== components.length) {
-      errors.push('Duplicate component names found');
+      const duplicates = names.filter(
+        (item, index) => names.indexOf(item) !== index,
+      );
+      errors.push(`Duplicate component names found: ${duplicates.join(', ')}`);
+      this.logger.warn(
+        `Validation failed: Duplicate component names found: ${duplicates.join(', ')}`,
+      );
     }
 
     // Validation for each component
     for (const component of components) {
       if (!component.name) {
         errors.push('Component missing name');
+        this.logger.warn('Validation failed: Component missing name.');
       }
 
       if (!component.resourceModel || component.resourceModel.length === 0) {
-        errors.push(
-          `Component ${component.name || 'unnamed'} has no resource allocation`,
+        const compName = component.name || 'unnamed';
+        errors.push(`Component ${compName} has no resource allocation`);
+        this.logger.warn(
+          `Validation failed: Component ${compName} has no resource allocation.`,
         );
       } else {
         // Check that allocations sum to 100%
@@ -77,10 +91,15 @@ export abstract class BaseCalculator implements CostCalculator {
           errors.push(
             `Component ${component.name} resource allocations should sum to 100% (currently ${totalAllocation}%)`,
           );
+          this.logger.warn(
+            `Validation failed: Component ${component.name} allocation sum is ${totalAllocation}%.`,
+          );
         }
       }
     }
-
+    if (errors.length === 0) {
+      this.logger.debug('Component validation successful.');
+    }
     return errors;
   }
 
@@ -90,12 +109,14 @@ export abstract class BaseCalculator implements CostCalculator {
    * @returns The working hours per location
    */
   private getWorkingHoursPerLocation(location: string): number {
+    // No logging needed here unless debugging specific locations
     switch (location) {
       case 'Australia':
         return 8;
       case 'India':
         return 9;
       default:
+        this.logger.error(`Unknown location encountered: ${location}`);
         throw new Error(`Unknown location: ${location}`);
     }
   }
@@ -113,18 +134,24 @@ export abstract class BaseCalculator implements CostCalculator {
     blendRates: Record<string, Record<ComplexityLevel, number>>,
     effortHours: Record<string, number>,
   ): CostBreakdown {
+    this.logger.debug(
+      `Calculating effort-based cost for component: ${component.name}, Complexity: ${complexity}`,
+    );
     let totalAmount = 0;
     const effortBreakdown: EffortBreakdown[] = [];
     let totalEffortHours = 0;
 
     for (const { allocation, location } of component.resourceModel) {
+      this.logger.debug(
+        `Processing allocation for location: ${location} (${allocation}%)`,
+      );
       // Get blend rate for this location and complexity
       const blendRate = blendRates[location]?.[complexity];
 
       if (!blendRate) {
-        throw new Error(
-          `Blend rate not found for location "${location}" at complexity "${complexity}"`,
-        );
+        const errorMsg = `Blend rate not found for location "${location}" at complexity "${complexity}"`;
+        this.logger.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       const workingHours = this.getWorkingHoursPerLocation(location);
@@ -132,20 +159,26 @@ export abstract class BaseCalculator implements CostCalculator {
       const effortsHrForLocation =
         (allocation / 100) * workingHours * effortHours[location];
 
-      const amount = Number((effortsHrForLocation * blendRate).toFixed(2)); // * important: round to 2 decimal places
+      const amount = Number((effortsHrForLocation * blendRate).toFixed(2));
 
       totalAmount += amount;
       totalEffortHours += effortsHrForLocation;
 
+      this.logger.debug(
+        `  Location: ${location}, Hours: ${effortsHrForLocation.toFixed(2)}, Rate: ${blendRate}, Amount: ${amount}`,
+      );
       // Add to effort breakdown
       effortBreakdown.push({
         deliveryLocation: location,
         effortHours: effortsHrForLocation,
         effortAmount: amount,
-        effortHoursDescription: `${effortsHrForLocation} hours in ${location} at ${blendRate}/hour`,
+        effortHoursDescription: `${effortsHrForLocation.toFixed(2)} hours in ${location} at ${blendRate}/hour`,
       });
     }
 
+    this.logger.debug(
+      `Finished effort calculation for ${component.name}. Total Hours: ${totalEffortHours.toFixed(2)}, Total Amount: ${totalAmount.toFixed(2)}`,
+    );
     // Create cost breakdown
     return {
       costComponentName: component.name,
@@ -154,7 +187,7 @@ export abstract class BaseCalculator implements CostCalculator {
       isError: false,
       errorMessage: '',
       effortHours: totalEffortHours,
-      effortHoursDescription: `Total: ${totalEffortHours} hours across all locations`,
+      effortHoursDescription: `Total: ${totalEffortHours.toFixed(2)} hours across all locations`,
       effortBreakdown,
     };
   }
@@ -163,6 +196,7 @@ export abstract class BaseCalculator implements CostCalculator {
    * Calculate the total from a breakdown array
    */
   protected calculateTotalFromBreakdown(breakdown: CostBreakdown[]): number {
+    // Simple function, logging might be excessive unless debugging totals
     return breakdown.reduce((sum, item) => sum + item.amount, 0);
   }
 
@@ -199,40 +233,51 @@ export abstract class BaseCalculator implements CostCalculator {
   public async calculateCosts(
     request: AssetCostRequest,
   ): Promise<AssetCostResponse> {
+    this.logger.log(`Calculating costs for asset: ${request.assetName}...`);
+
     // Validate the request
     if (request.assetName !== this.assetName) {
-      throw new Error(
-        `Invalid asset name: ${request.assetName}. This calculator supports: ${this.assetName}`,
-      );
+      const errorMsg = `Invalid asset name: ${request.assetName}. This calculator supports: ${this.assetName}`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Validate components
     const validationErrors = this.validateComponents(request.assetComponents);
     if (validationErrors.length > 0) {
-      throw new Error(`Invalid request: ${validationErrors.join(', ')}`);
+      const errorMsg = `Invalid request components: ${validationErrors.join(', ')}`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg); // Consider a BadRequestException here
     }
 
-    // Calculate build cost
+    this.logger.debug('Calculating build cost...');
     const buildCostResult = await this.calculateBuildCost(request);
+    this.logger.debug(`Build cost calculated: ${buildCostResult.total}`);
 
-    // Calculate run cost
+    this.logger.debug('Calculating run cost...');
     const runCostResult = await this.calculateRunCost(request);
+    this.logger.debug(
+      `Run cost calculated: ${runCostResult.total} (${runCostResult.period})`,
+    );
 
-    // Return formatted response
-    return {
+    const response: AssetCostResponse = {
       assetName: this.assetName,
       buildCost: {
         total: buildCostResult.total,
-        currency: 'USD',
+        currency: 'USD', // Consider making currency dynamic or configurable
         breakdown: buildCostResult.breakdown,
       },
       runCost: {
         total: runCostResult.total,
-        currency: 'USD',
+        currency: 'USD', // Consider making currency dynamic or configurable
         period: runCostResult.period,
         breakdown: runCostResult.breakdown,
       },
       estimationDate: new Date(),
     };
+    this.logger.log(
+      `Cost calculation finished for asset: ${this.assetName}. Build: ${response.buildCost.total}, Run: ${response.runCost.total}`,
+    );
+    return response;
   }
 }

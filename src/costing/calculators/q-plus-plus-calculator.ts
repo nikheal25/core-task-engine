@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   AssetCostRequest,
   CostBreakdown,
@@ -17,12 +17,16 @@ interface QPlusPlusSpecificFields {
 
 @Injectable()
 export class QPlusPlusCalculator extends BaseCalculator {
+  // Initialize logger for this specific calculator
+  protected readonly logger = new Logger(QPlusPlusCalculator.name);
+
   protected assetName = 'QPlusPlus';
 
   /**
    * Q++-specific location rates in USD
    */
   private getLocationRates(): Record<string, number> {
+    // Logging might be excessive here unless debugging rates
     return {
       US: 20000,
       EU: 22000,
@@ -37,6 +41,7 @@ export class QPlusPlusCalculator extends BaseCalculator {
    * In a real implementation, this would fetch from MongoDB
    */
   private getBlendRates(): Record<string, Record<ComplexityLevel, number>> {
+    // Logging might be excessive here unless debugging rates
     // Sample blend rates data structure (location -> complexity -> hourly rate)
     return {
       Australia: {
@@ -100,6 +105,9 @@ export class QPlusPlusCalculator extends BaseCalculator {
     componentName: string,
     complexity: ComplexityLevel,
   ): Record<string, number> {
+    this.logger.debug(
+      `Getting effort hours for Q++ component: ${componentName}, complexity: ${complexity}`,
+    );
     // Sample effort hours for Q++ components
     const effortHoursDb: Record<
       string,
@@ -131,16 +139,21 @@ export class QPlusPlusCalculator extends BaseCalculator {
     // Get effort hours for the component
     const component = effortHoursDb[componentName];
     if (!component) {
-      throw new Error(`No effort hours found for component "${componentName}"`);
+      const errorMsg = `No effort hours found for component "${componentName}"`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     const hours = component[complexity];
     if (!hours) {
-      throw new Error(
-        `No effort hours found for component "${componentName}" at complexity "${complexity}"`,
-      );
+      const errorMsg = `No effort hours found for component "${componentName}" at complexity "${complexity}"`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
+    this.logger.debug(
+      `Found Q++ effort hours for ${componentName} (${complexity}): ${JSON.stringify(hours)}`,
+    );
     return hours;
   }
 
@@ -151,12 +164,16 @@ export class QPlusPlusCalculator extends BaseCalculator {
     components: AssetComponent[],
     complexity: ComplexityLevel,
   ): CostBreakdown[] {
+    this.logger.debug(
+      `Calculating effort-based costs for Q++ components, Complexity: ${complexity}`,
+    );
     // Get blend rates
     const blendRates = this.getBlendRates();
 
     const costBreakdowns: CostBreakdown[] = [];
 
     for (const component of components) {
+      this.logger.debug(`Processing component: ${component.name}`);
       try {
         // Get effort hours for this component
         const effortHours = this.getEffortHours(component.name, complexity);
@@ -170,9 +187,16 @@ export class QPlusPlusCalculator extends BaseCalculator {
         );
 
         costBreakdowns.push(costBreakdown);
+        this.logger.debug(
+          `Successfully calculated cost for component ${component.name}: ${costBreakdown.amount}`,
+        );
       } catch (error) {
         // If there's an error getting effort hours, create an error breakdown
         const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Error calculating cost for Q++ component ${component.name}: ${message}`,
+          error instanceof Error ? error.stack : undefined,
+        );
         costBreakdowns.push({
           costComponentName: component.name,
           amount: 0,
@@ -182,26 +206,35 @@ export class QPlusPlusCalculator extends BaseCalculator {
         });
       }
     }
-
+    this.logger.debug(
+      'Finished calculating effort-based costs for all Q++ components.',
+    );
     return costBreakdowns;
   }
 
   protected calculateBuildCost(
     request: AssetCostRequest,
   ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
+    this.logger.log(
+      `Calculating Q++ build cost for asset: ${request.assetName}`,
+    );
     const specificFields = request.specificFields as QPlusPlusSpecificFields;
 
     // Use specified complexity or default to 'Medium'
-    const complexity = specificFields?.complexity || 'Medium';
+    const complexity = (request.complexity || 'Medium') as ComplexityLevel; // Get from top level
+    this.logger.debug(`Using complexity: ${complexity}`);
 
     // Calculate effort-based costs for all components
     const costBreakdowns = this.calculateEffortBasedCosts(
       request.assetComponents,
-      complexity as ComplexityLevel,
+      complexity,
     );
 
     // Add database cost if specified
     if (specificFields?.databaseSize) {
+      this.logger.debug(
+        `Adding database setup cost for size: ${specificFields.databaseSize}`,
+      );
       // Database size multiplier
       const dbSizeMultiplier =
         {
@@ -209,18 +242,25 @@ export class QPlusPlusCalculator extends BaseCalculator {
           medium: 2,
           large: 3,
         }[specificFields.databaseSize] || 1;
+      const dbSetupCost = 1000 * dbSizeMultiplier;
+      this.logger.debug(`Database setup cost: ${dbSetupCost}`);
 
       costBreakdowns.push({
         costComponentName: 'Database Setup',
-        amount: 1000 * dbSizeMultiplier,
+        amount: dbSetupCost,
         description: `Database setup for ${specificFields.databaseSize} size`,
         isError: false,
         errorMessage: '',
       });
+    } else {
+      this.logger.debug(
+        'No database size specified, skipping database setup cost.',
+      );
     }
 
     // Calculate total from breakdown
     const total = this.calculateTotalFromBreakdown(costBreakdowns);
+    this.logger.log(`Q++ build cost calculated: ${total}`);
 
     return Promise.resolve({ total, breakdown: costBreakdowns });
   }
@@ -230,14 +270,19 @@ export class QPlusPlusCalculator extends BaseCalculator {
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }> {
+    this.logger.log(`Calculating Q++ run cost for asset: ${request.assetName}`);
     const specificFields = request.specificFields as QPlusPlusSpecificFields;
 
     // Base run cost
     const baseRunCost = 1000;
+    this.logger.debug(`Base run cost: ${baseRunCost}`);
 
     // Database run cost if specified
     let dbRunCost = 0;
     if (specificFields?.databaseSize) {
+      this.logger.debug(
+        `Calculating database hosting cost for size: ${specificFields.databaseSize}`,
+      );
       // Database size multiplier
       const dbSizeMultiplier =
         {
@@ -247,12 +292,21 @@ export class QPlusPlusCalculator extends BaseCalculator {
         }[specificFields.databaseSize] || 1;
 
       dbRunCost = 200 * dbSizeMultiplier;
+      this.logger.debug(`Database hosting cost: ${dbRunCost}`);
+    } else {
+      this.logger.debug(
+        'No database size specified, skipping database hosting cost.',
+      );
     }
 
-    // Apply deployment type multiplier
+    // Apply deployment type multiplier - Example placeholder, assuming no multiplier for now
+    // const deploymentMultiplier = this.getDeploymentTypeMultiplier(request); // Need implementation if required
+    const deploymentMultiplier = 1.0;
+    this.logger.debug(`Deployment multiplier: ${deploymentMultiplier}`);
 
     // Apply multipliers to base run cost
-    const adjustedBaseRunCost = baseRunCost;
+    const adjustedBaseRunCost = baseRunCost * deploymentMultiplier;
+    this.logger.debug(`Adjusted base run cost: ${adjustedBaseRunCost}`);
 
     // Create breakdown
     const breakdown: CostBreakdown[] = [
@@ -277,6 +331,7 @@ export class QPlusPlusCalculator extends BaseCalculator {
 
     // Calculate total from breakdown
     const total = this.calculateTotalFromBreakdown(breakdown);
+    this.logger.log(`Q++ run cost calculated: ${total} (monthly)`);
 
     return Promise.resolve({
       total,

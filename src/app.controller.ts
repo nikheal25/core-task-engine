@@ -7,7 +7,7 @@ import { HealthCheckResponseDto } from './dto/health.dto';
 @ApiTags('App')
 @Controller()
 export class AppController {
-  private readonly logger = new Logger(AppController.name, { timestamp: true });
+  private readonly logger = new Logger(AppController.name);
 
   constructor(private readonly appService: AppService) {}
 
@@ -19,7 +19,6 @@ export class AppController {
     type: HelloResponseDto,
   })
   getHello(): HelloResponseDto {
-    this.logger.log('Processing hello request');
     return { message: this.appService.getHello() };
   }
 
@@ -31,7 +30,7 @@ export class AppController {
     type: HealthCheckResponseDto,
   })
   healthCheck(): HealthCheckResponseDto {
-    this.logger.log('Performing health check');
+    this.logger.log('Health check endpoint called');
     return this.appService.getHealth();
   }
 }

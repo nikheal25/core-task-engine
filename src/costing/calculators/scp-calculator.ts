@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   AssetCostRequest,
   CostBreakdown,
@@ -7,12 +7,17 @@ import { BaseCalculator } from './base-calculator';
 
 @Injectable()
 export class ScpCalculator extends BaseCalculator {
+  protected readonly logger = new Logger(ScpCalculator.name);
+
   protected assetName = 'SCP';
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected calculateBuildCost(
-    _request: AssetCostRequest,
+    request: AssetCostRequest,
   ): Promise<{ total: number; breakdown: CostBreakdown[] }> {
+    this.logger.log(
+      `Calculating SCP build cost for asset: ${request.assetName}`,
+    );
     // Dummy implementation for SCP build cost
     const dummyBreakdown: CostBreakdown[] = [
       {
@@ -23,15 +28,17 @@ export class ScpCalculator extends BaseCalculator {
       },
     ];
     const total = this.calculateTotalFromBreakdown(dummyBreakdown);
+    this.logger.log(`SCP build cost calculated: ${total}`);
     return Promise.resolve({ total, breakdown: dummyBreakdown });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected calculateRunCost(_request: AssetCostRequest): Promise<{
+  protected calculateRunCost(request: AssetCostRequest): Promise<{
     total: number;
     breakdown: CostBreakdown[];
     period: 'monthly' | 'yearly';
   }> {
+    this.logger.log(`Calculating SCP run cost for asset: ${request.assetName}`);
     // Dummy implementation for SCP run cost
     const dummyBreakdown: CostBreakdown[] = [
       {
@@ -42,6 +49,7 @@ export class ScpCalculator extends BaseCalculator {
       },
     ];
     const total = this.calculateTotalFromBreakdown(dummyBreakdown);
+    this.logger.log(`SCP run cost calculated: ${total} (monthly)`);
     return Promise.resolve({
       total,
       breakdown: dummyBreakdown,
