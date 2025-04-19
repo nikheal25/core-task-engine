@@ -1,11 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CostingController } from '../src/costing/costing.controller';
 import { CostingService } from '../src/costing/services/costing.service';
-import { CostRequestDto } from '../src/costing/dto/cost-request.dto';
+import {
+  CostRequestDto,
+  DeploymentType,
+  SupportLevel,
+} from '../src/costing/dto/cost-request.dto';
 import { AssetCostResponseDto } from '../src/costing/dto/cost-response.dto';
 import { AtrCalculator } from '../src/costing/calculators/atr-calculator';
 import { QPlusPlusCalculator } from '../src/costing/calculators/q-plus-plus-calculator';
-import { DeploymentType, SupportLevel } from '../src/costing/dto/cost-request.dto';
 
 describe('CostingController', () => {
   let controller: CostingController;
