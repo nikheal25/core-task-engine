@@ -45,9 +45,10 @@ async function bootstrap() {
   }
 
   await app.listen(port);
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  const logger = new ConsoleLogger('Bootstrap');
+  logger.log(`Application is running on: ${await app.getUrl()}`);
   if (swaggerEnabled) {
-    console.log(
+    logger.log(
       `Swagger documentation is available at: ${await app.getUrl()}/api/docs`,
     );
   }
