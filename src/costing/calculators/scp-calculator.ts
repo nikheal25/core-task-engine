@@ -3,7 +3,7 @@ import {
   AssetCostRequest,
   CostBreakdown,
 } from '../interfaces/costing.interface';
-import { BaseCalculator, ComplexityLevel } from './base-calculator';
+import { BaseCalculator } from './base-calculator';
 
 @Injectable()
 export class ScpCalculator extends BaseCalculator {
